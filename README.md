@@ -1,91 +1,148 @@
-n# GSTify Filing Companion
+# GSTify AI – Frontend
 
-GSTify Filing Companion is an AI-powered system that automatically processes GST invoices and extracts structured data for easier GST filing.
-The system uses OCR and intelligent parsing to read invoice documents and convert them into usable financial information.
+Frontend application for **GSTify AI**, an AI-powered GST invoice processing platform designed to automate invoice extraction, validation, and compliance for Indian MSMEs.
+
+This frontend provides a modern SaaS-style dashboard where users can upload invoices, view AI extraction results, monitor compliance scores, detect fraud risks, and export GSTR-1 drafts.
+
+---
 
 ## 🚀 Features
 
-* 📄 Upload GST invoices (images or documents)
-* 🔍 Extract invoice details using OCR
-* 🤖 AI-assisted invoice parsing
-* 📊 Structured invoice data output
-* ⚡ Fast and user-friendly web interface
+* 📊 Modern SaaS Dashboard
+* 📤 Invoice Upload Interface
+* 🤖 AI Extraction Results Display
+* 🧾 GST Validation & Compliance View
+* 🚨 Fraud Detection Indicators
+* 📁 GSTR-1 CSV Export Interface
+* ⚡ Fast React UI with Vite
+* 🎨 Tailwind CSS based responsive design
 
-## 🧠 Tech Stack
+---
 
-### Frontend
+## 🛠 Tech Stack
 
-* React
-* Vite
-* Tailwind CSS
+* **React** – UI framework
+* **Vite** – Fast frontend build tool
+* **Tailwind CSS** – Styling framework
+* **JavaScript (ES6+)**
+* **Axios / Fetch API** – Backend communication
 
-### Backend
+---
 
-* Python
-* OCR Processing
-* Invoice Parsing Engine
-
-## 📁 Project Structure
+## 📂 Project Structure
 
 ```
-GSTify-FilingCompanion
+frontend/
 │
-├── backend
-│   └── py-flask
-│       ├── api.py
-│       ├── agent.py
-│       ├── config.py
-│       ├── requirements.txt
-│       ├── tools/
-│       ├── sample_invoices/
-│       └── storage/
+├── public/             # Static assets
+├── src/
+│   ├── components/     # Reusable UI components
+│   ├── pages/          # Application pages
+│   ├── assets/         # Images & icons
+│   ├── App.jsx         # Main application component
+│   └── main.jsx        # Entry point
 │
-├── frontend
-│   └── gstify-react
-│       ├── src/
-│       ├── public/
-│       ├── package.json
-│       └── vite.config.js
-│
+├── index.html          # Root HTML file
+├── package.json        # Project dependencies
+├── tailwind.config.js  # Tailwind configuration
+├── vite.config.js      # Vite configuration
 └── README.md
 ```
 
+---
+
 ## ⚙️ Installation
 
-### Clone the Repository
+Clone the repository:
 
 ```
-git clone https://github.com/yourusername/GSTify-FilingCompanion.git
-cd GSTify-FilingCompanion
+git clone https://github.com/your-username/gstify-ai.git
 ```
 
-### Backend Setup
+Navigate to the frontend directory:
 
 ```
-cd backend/hackathonkl
-pip install -r requirements.txt
-python api.py
+cd gstify-ai/frontend
 ```
 
-### Frontend Setup
+Install dependencies:
 
 ```
-cd frontend/gstify-react
 npm install
+```
+
+---
+
+## ▶️ Running the Development Server
+
+Start the local development server:
+
+```
 npm run dev
 ```
 
-The frontend will run locally and communicate with the backend API.
+The application will run at:
+
+```
+http://localhost:5173
+```
+
+---
+
+## 📦 Build for Production
+
+To create a production build:
+
+```
+npm run build
+```
+
+The optimized files will be generated in the **dist/** folder.
+
+---
 
 ## 🌐 Deployment
 
-Frontend deployed on **Vercel**
-Backend deployed on **Render**
+The frontend can be deployed easily using **Vercel**.
 
-## 📌 Use Case
+Steps:
 
-GSTify helps businesses and accountants automate GST invoice processing by eliminating manual data entry. The system reads invoices and extracts relevant fields required for GST filing.
+1. Push the repository to GitHub
+2. Import the project into Vercel
+3. Set the **root directory** as:
 
-## 👨💻 Author
+```
+frontend
+```
 
-Shashi Raj
+4. Deploy
+
+---
+
+## 🔗 Backend API
+
+This frontend communicates with the **GSTify AI Flask backend** for:
+
+* Invoice upload
+* AI data extraction
+* GST validation
+* Fraud detection
+* CSV export
+
+Example API endpoint:
+
+```
+POST /api/process-invoice
+```
+
+---
+
+## 👨‍💻 Author
+
+**Shashi Raj**
+
+AI Developer | Building tools to automate compliance and financial workflows for Indian businesses.
+
+---
+
+
