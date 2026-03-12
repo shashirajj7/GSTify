@@ -10,10 +10,13 @@ const Dashboard = () => {
     const [invoices, setInvoices] = useState([]);
 
     useEffect(() => {
-        const userName = localStorage.getItem('userName') || 'Admin';
-        const loginType = localStorage.getItem('loginType') || 'login';
+        const userName = localStorage.getItem('userName');
+        const loginType = localStorage.getItem('loginType');
 
-        if (loginType === 'signup') {
+        if (!userName) {
+            // Guest / Try Demo mode
+            setGreeting('Exploring Demo Mode 👋');
+        } else if (loginType === 'signup') {
             setGreeting(`Welcome, ${userName} 👋`);
         } else {
             setGreeting(`Welcome back, ${userName} 👋`);

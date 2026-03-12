@@ -280,7 +280,7 @@ const FraudDetection = () => {
                                                             </span>
                                                         </td>
                                                         <td className="p-4 text-center">
-                                                            <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <div className="flex items-center justify-center gap-2 transition-opacity">
                                                                 <button onClick={() => downloadCSVData([inv], `gstr1_${inv.invoiceNumber || 'draft'}.csv`)} className="text-slate-400 dark:text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors" title="Download CSV"><span className="material-symbols-outlined text-[18px]">download</span></button>
                                                                 <button onClick={() => handleEdit(idx, inv)} className="text-slate-400 dark:text-slate-500 hover:text-primary dark:hover:text-blue-400 transition-colors" title="Edit"><span className="material-symbols-outlined text-[18px]">edit</span></button>
                                                                 <button onClick={() => handleDelete(idx)} className="text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors" title="Delete"><span className="material-symbols-outlined text-[18px]">delete</span></button>

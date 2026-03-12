@@ -1,51 +1,114 @@
-# GSTify AI – Frontend
+# GSTify AI 🚀
 
-Frontend application for **GSTify AI**, an AI-powered GST invoice processing platform designed to automate invoice extraction, validation, and compliance for Indian MSMEs.
+**AI-Powered GST Invoice Processing Platform for Indian MSMEs**
 
-This frontend provides a modern SaaS-style dashboard where users can upload invoices, view AI extraction results, monitor compliance scores, detect fraud risks, and export GSTR-1 drafts.
-
----
-
-## 🚀 Features
-
-* 📊 Modern SaaS Dashboard
-* 📤 Invoice Upload Interface
-* 🤖 AI Extraction Results Display
-* 🧾 GST Validation & Compliance View
-* 🚨 Fraud Detection Indicators
-* 📁 GSTR-1 CSV Export Interface
-* ⚡ Fast React UI with Vite
-* 🎨 Tailwind CSS based responsive design
+GSTify AI automates the process of extracting, validating, and preparing GST invoice data for filing. Instead of manually entering invoice details during GST filing, users can upload invoice images and let AI process them automatically.
 
 ---
 
-## 🛠 Tech Stack
+## 📌 Problem
 
-* **React** – UI framework
-* **Vite** – Fast frontend build tool
-* **Tailwind CSS** – Styling framework
-* **JavaScript (ES6+)**
-* **Axios / Fetch API** – Backend communication
+Many small businesses and MSMEs in India store invoices as **images or PDFs**. During GST filing, accountants must manually enter the data into the GST portal.
+
+This results in:
+
+* ⏳ Time-consuming manual work
+* ❌ Data entry errors
+* 📉 Delays in GST compliance
+* 💰 Increased accounting effort
+
+---
+
+## 💡 Solution
+
+GSTify AI uses **multimodal AI** to extract and validate invoice information automatically.
+
+Workflow:
+
+Upload Invoice → AI Extraction → GST Validation → Fraud Detection → GSTR-1 Draft Export
+
+---
+
+## ✨ Key Features
+
+* 🤖 **AI Invoice Data Extraction**
+* 🧾 **GSTIN Format Validation**
+* 🧮 **Tax Calculation Verification**
+* 🌍 **Intrastate vs Interstate Detection**
+* 🚨 **Fraud & Anomaly Detection**
+* 📊 **Compliance Scoring**
+* 📁 **GSTR-1 CSV Draft Generation**
+* 🖥 **Modern SaaS Dashboard**
+
+---
+
+## 🏗 Project Architecture
+
+```text
+Frontend (React + Vite)
+        ↓
+Flask API Backend
+        ↓
+AI Processing Engine
+        ↓
+GST Validation System
+        ↓
+Fraud Detection Engine
+        ↓
+GSTR-1 CSV Generator
+```
+
+---
+
+## 🧰 Tech Stack
+
+### Frontend
+
+* React
+* Vite
+* Tailwind CSS
+* JavaScript
+
+### Backend
+
+* Python
+* Flask
+* REST APIs
+
+### AI
+
+* Google Gemini Vision
+
+### Deployment
+
+* Vercel (Frontend)
+* Cloud backend service
 
 ---
 
 ## 📂 Project Structure
 
-```
-frontend/
+```text
+GSTify/
 │
-├── public/             # Static assets
-├── src/
-│   ├── components/     # Reusable UI components
-│   ├── pages/          # Application pages
-│   ├── assets/         # Images & icons
-│   ├── App.jsx         # Main application component
-│   └── main.jsx        # Entry point
+├── backend/
+│   ├── api.py
+│   ├── agent.py
+│   ├── config.py
+│   ├── requirements.txt
+│   ├── tools/
+│   ├── storage/
+│   ├── sample_invoices/
+│   └── temp_uploads/
 │
-├── index.html          # Root HTML file
-├── package.json        # Project dependencies
-├── tailwind.config.js  # Tailwind configuration
-├── vite.config.js      # Vite configuration
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js
+│   └── tailwind.config.js
+│
 └── README.md
 ```
 
@@ -55,33 +118,27 @@ frontend/
 
 Clone the repository:
 
-```
-git clone https://github.com/your-username/gstify-ai.git
-```
-
-Navigate to the frontend directory:
-
-```
-cd gstify-ai/frontend
+```bash
+git clone https://github.com/shashirajj7/GSTify.git
 ```
 
-Install dependencies:
+Navigate to the project folder:
 
-```
-npm install
+```bash
+cd GSTify
 ```
 
 ---
 
-## ▶️ Running the Development Server
+## ▶️ Run Frontend
 
-Start the local development server:
-
-```
+```bash
+cd frontend
+npm install
 npm run dev
 ```
 
-The application will run at:
+The frontend will run at:
 
 ```
 http://localhost:5173
@@ -89,51 +146,64 @@ http://localhost:5173
 
 ---
 
-## 📦 Build for Production
+## ▶️ Run Backend
 
-To create a production build:
+```bash
+cd backend
+pip install -r requirements.txt
+python api.py
+```
+
+Backend runs at:
 
 ```
-npm run build
+http://localhost:5000
 ```
-
-The optimized files will be generated in the **dist/** folder.
 
 ---
 
-## 🌐 Deployment
+## 📸 Example Workflow
 
-The frontend can be deployed easily using **Vercel**.
-
-Steps:
-
-1. Push the repository to GitHub
-2. Import the project into Vercel
-3. Set the **root directory** as:
-
-```
-frontend
-```
-
-4. Deploy
+1️⃣ Upload invoice image
+2️⃣ AI extracts invoice details
+3️⃣ GST rules are validated
+4️⃣ Fraud detection scans invoice
+5️⃣ System generates GSTR-1 CSV draft
 
 ---
 
-## 🔗 Backend API
+## 📸 Application Screenshots
 
-This frontend communicates with the **GSTify AI Flask backend** for:
+### Dashboard
+![Dashboard](screenshots/dashboard.png)
 
-* Invoice upload
-* AI data extraction
-* GST validation
-* Fraud detection
-* CSV export
+### Invoice Upload
+![Upload](screenshots/upload-invoice.png)
 
-Example API endpoint:
+### AI Extraction & Validation
+![AI Extraction](screenshots/ai-extraction.png)
 
-```
-POST /api/process-invoice
-```
+### Fraud Detection
+![Fraud Detection](screenshots/fraud-detection.png)
+
+---
+
+## 🎯 Target Users
+
+* Indian MSMEs
+* Chartered Accountants
+* GST Practitioners
+* Small Businesses
+
+---
+
+## 🚀 Future Improvements
+
+* Google Authentication
+* Bulk invoice upload
+* Automated GST filing integration
+* AI fraud pattern detection
+* Multi-user SaaS dashboard
 
 ---
 
@@ -141,7 +211,10 @@ POST /api/process-invoice
 
 **Shashi Raj**
 
-AI Developer | Building tools to automate compliance and financial workflows for Indian businesses.
+AI developer building tools to simplify compliance and automation for Indian businesses.
+
+GitHub:
+https://github.com/shashirajj7
 
 ---
 

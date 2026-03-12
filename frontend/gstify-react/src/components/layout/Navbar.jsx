@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Navbar = () => {
+    const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    const handleTryDemo = () => {
+        localStorage.removeItem('userName');
+        localStorage.removeItem('loginType');
+        navigate('/dashboard');
+    };
     const [isDark, setIsDark] = useState(() => {
         // Initialize state based on the document class to keep it consistent
         return document.documentElement.classList.contains('dark');
@@ -58,9 +65,9 @@ const Navbar = () => {
                             </span>
                         </button>
                         <Link to="/login" className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-t_navy dark:hover:text-white hidden sm:block">Log in</Link>
-                        <Link to="/dashboard" className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold text-white bg-primary rounded-full hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30">
+                        <button onClick={handleTryDemo} className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold text-white bg-primary rounded-full hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30">
                             Try Demo
-                        </Link>
+                        </button>
                         {/* Mobile menu button */}
                         <div className="md:hidden flex items-center">
                             <button

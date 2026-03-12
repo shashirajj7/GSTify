@@ -68,6 +68,7 @@ const Validation = () => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [documentName, setDocumentName] = useState('INV-2023-894.pdf');
     const [customBatchName, setCustomBatchName] = useState('');
+    const [uploadDate, setUploadDate] = useState('');
     const [aiData, setAiData] = useState({
         success: false,
         confidence: 0,
@@ -93,6 +94,9 @@ const Validation = () => {
         if (storedName) {
             setDocumentName(storedName);
         }
+        // Read the upload date stamped by Upload.jsx; fallback to today
+        const storedUploadDate = localStorage.getItem('invoiceUploadDate');
+        setUploadDate(storedUploadDate || new Date().toLocaleDateString('en-GB'));
         if (storedAiResult) {
             try {
                 setAiData(JSON.parse(storedAiResult));
@@ -308,7 +312,7 @@ const Validation = () => {
                                         <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Invoice Date</label>
                                         <div className="flex items-center rounded-lg bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 focus-within:ring-2 focus-within:ring-primary focus-within:border-primary transition-all overflow-hidden">
                                             <span className="pl-3 text-slate-400 material-symbols-outlined text-sm">calendar_today</span>
-                                            <input className="w-full bg-transparent border-none text-sm text-slate-900 dark:text-white font-medium focus:ring-0 px-3 py-2.5 outline-none" type="text" value={isMultiple ? "Multiple Dates" : (displayData.date || "")} placeholder={isMultiple ? "" : "Not Extracted"} />
+                                            <input className="w-full bg-transparent border-none text-sm text-slate-900 dark:text-white font-medium focus:ring-0 px-3 py-2.5 outline-none" type="text" value={uploadDate} readOnly />
                                         </div>
                                     </div>
                                 </div>

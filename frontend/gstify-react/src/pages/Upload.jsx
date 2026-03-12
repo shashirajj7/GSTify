@@ -46,6 +46,8 @@ const Upload = () => {
                     localStorage.setItem('uploadedInvoiceImages', JSON.stringify(results));
                 }
                 localStorage.setItem('uploadedInvoiceName', files.length > 1 ? `${files.length} Invoices Batch` : files[0].name);
+                // Always stamp the exact date the user uploaded this invoice
+                localStorage.setItem('invoiceUploadDate', new Date().toLocaleDateString('en-GB'));
             });
         }
 

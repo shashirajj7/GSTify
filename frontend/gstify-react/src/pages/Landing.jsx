@@ -1,9 +1,18 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 
 const Landing = () => {
+    const navigate = useNavigate();
+
+    const handleTryDemo = () => {
+        // Clear any existing session so Try Demo always starts as a guest
+        localStorage.removeItem('userName');
+        localStorage.removeItem('loginType');
+        navigate('/dashboard');
+    };
+
     return (
         <div className="bg-white text-gray-800 font-sans antialiased overflow-x-hidden min-h-screen flex flex-col">
             <style>{`
@@ -59,10 +68,10 @@ const Landing = () => {
                                     AI-powered invoice extraction, GST validation, fraud detection and GSTR-1 draft generation — built for Indian MSMEs.
                                 </p>
                                 <div className="flex flex-col sm:flex-row items-center gap-4 mb-10">
-                                    <Link to="/dashboard" className="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 text-[16px] font-semibold text-white bg-primary rounded-lg hover:bg-blue-700 transition-all hover:shadow-[0_4px_20px_rgba(19,127,236,0.4)] shadow-lg shadow-blue-500/30 gap-2">
+                                    <button onClick={handleTryDemo} className="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 text-[16px] font-semibold text-white bg-primary rounded-lg hover:bg-blue-700 transition-all hover:shadow-[0_4px_20px_rgba(19,127,236,0.4)] shadow-lg shadow-blue-500/30 gap-2">
                                         Try Demo
                                         <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                                    </Link>
+                                    </button>
                                     <Link to="/dashboard" className="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 text-[16px] font-semibold text-slate-700 bg-white border-2 border-slate-200 rounded-lg hover:border-primary hover:text-primary hover:bg-blue-50/20 transition-all gap-2">
                                         <span className="material-symbols-outlined text-primary">play_circle</span>
                                         Watch Workflow
@@ -305,9 +314,9 @@ const Landing = () => {
                             Start automating your GST workflow today.
                         </h2>
                         <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-                            <Link to="/dashboard" className="px-8 py-4 bg-white text-primary text-lg font-bold rounded-xl hover:bg-slate-50 transition-all shadow-xl shadow-blue-900/20 hover:-translate-y-1">
+                            <button onClick={handleTryDemo} className="px-8 py-4 bg-white text-primary text-lg font-bold rounded-xl hover:bg-slate-50 transition-all shadow-xl shadow-blue-900/20 hover:-translate-y-1">
                                 Get Started for Free
-                            </Link>
+                            </button>
                             <Link to="/contact" className="px-8 py-4 bg-transparent border-2 border-white/30 text-white text-lg font-bold rounded-xl hover:bg-white/10 transition-all">
                                 Contact Sales
                             </Link>
