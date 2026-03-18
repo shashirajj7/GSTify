@@ -1,15 +1,16 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
+import { getUserInvoices } from '../utils/storage';
 
 const Invoices = () => {
     const navigate = useNavigate();
     const [invoices, setInvoices] = React.useState([]);
 
     React.useEffect(() => {
-        const stored = localStorage.getItem('approvedInvoices');
-        if (stored) {
-            setInvoices(JSON.parse(stored));
+        const stored = getUserInvoices();
+        if (stored && stored.length > 0) {
+            setInvoices(stored);
         }
     }, []);
 

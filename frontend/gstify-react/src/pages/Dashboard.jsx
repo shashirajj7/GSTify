@@ -1,32 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
+import { useAuth } from '../context/AuthContext';
+import { getUserInvoices, getUserSettings } from '../utils/storage';
 
 const Dashboard = () => {
     const navigate = useNavigate();
+    const { currentUser } = useAuth();
     const fileInputRef = useRef(null);
-    const [greeting, setGreeting] = useState('Welcome back, Admin 👋');
+    const [greeting, setGreeting] = useState('Welcome 👋');
 
     const [invoices, setInvoices] = useState([]);
 
     useEffect(() => {
-        const userName = localStorage.getItem('userName');
-        const loginType = localStorage.getItem('loginType');
-
-        if (!userName) {
-            // Guest / Try Demo mode
-            setGreeting('Exploring Demo Mode 👋');
-        } else if (loginType === 'signup') {
-            setGreeting(`Welcome, ${userName} 👋`);
+        const settings = getUserSettings();
+        let name = 'Guest';
+        
+        if (settings && settings.firstName) {
+            name = `${settings.firstName} ${settings.lastName || ''}`.trim();
+        } else if (currentUser) {
+            name = currentUser.displayName || currentUser.email?.split('@')[0] || 'User';
         } else {
-            setGreeting(`Welcome back, ${userName} 👋`);
+            name = localStorage.getItem('userName') || 'Guest';
         }
-
-        const stored = localStorage.getItem('approvedInvoices');
-        if (stored) {
-            setInvoices(JSON.parse(stored));
+        
+        const loginType = localStorage.getItem('loginType');
+        setGreeting(loginType === 'signup' ? `Welcome, ${name} 👋` : `Welcome back, ${name} 👋`);
+        
+        const stored = getUserInvoices();
+        if (stored && stored.length > 0) {
+            setInvoices(stored);
         }
-    }, []);
+    }, [currentUser]);
 
     // Derived Statistics
     const totalInvoices = invoices.length;
@@ -53,7 +58,7 @@ const Dashboard = () => {
     return (
         <AppLayout>
 
-            <div className="flex-1 overflow-y-auto w-full p-6 lg:p-10">
+            <div className="flex-1 overflow-y-auto w-full p-4 md:p-6 lg:p-10">
                 <div className="max-w-7xl mx-auto flex flex-col gap-6">
 
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-2">
@@ -140,7 +145,7 @@ const Dashboard = () => {
                     {/* Middle Section: Chart and Activity */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-auto lg:h-[450px]">
                         {/* Left Table Box */}
-                        <div className="bg-white dark:bg-[#1A2632] rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-lg shadow-slate-200/40 p-0 lg:col-span-2 flex flex-col overflow-hidden h-[450px]">
+                        <div className="bg-white dark:bg-[#1A2632] rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-lg shadow-slate-200/40 p-0 lg:col-span-2 flex flex-col overflow-hidden h-[400px] lg:h-[450px]">
                             <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-[#1A2632] shrink-0 sticky top-0 z-20">
                                 <div>
                                     <h3 className="font-bold text-lg text-slate-900 dark:text-white">Recent Invoices</h3>
@@ -198,7 +203,7 @@ const Dashboard = () => {
                         </div>
 
                         {/* Right Activity Box */}
-                        <div className="bg-white dark:bg-[#1A2632] rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-lg shadow-slate-200/40 p-0 flex flex-col h-[450px]">
+                        <div className="bg-white dark:bg-[#1A2632] rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-lg shadow-slate-200/40 p-0 flex flex-col min-h-[300px] max-h-[400px] lg:max-h-none lg:h-[450px]">
                             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-[#1A2632] rounded-t-2xl shrink-0">
                                 <h3 className="font-bold text-lg text-slate-900 dark:text-white">Recent Activity</h3>
                                 <Link to="/invoices" className="text-xs text-primary font-bold hover:underline">View All</Link>

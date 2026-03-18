@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, Link } from 'react-router-dom';
+import { getUserSettings } from '../../utils/storage';
 
 const navItems = [
     { path: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
@@ -11,11 +12,30 @@ const navItems = [
 ];
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
+    const [localSettings, setLocalSettings] = useState(getUserSettings());
+
+    useEffect(() => {
+        const handleProfileUpdate = () => {
+            setLocalSettings(getUserSettings());
+        };
+        window.addEventListener('profileUpdated', handleProfileUpdate);
+        return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
+    }, []);
+
+    const name = localSettings?.firstName ? `${localSettings.firstName} ${localSettings.lastName || ''}`.trim() : (localStorage.getItem('userName') || 'User Profile');
+    const avatarLetter = name.charAt(0).toUpperCase();
+    const customPhoto = localSettings?.profilePicture;
+    const [imageError, setImageError] = useState(false);
+
+    useEffect(() => {
+        setImageError(false);
+    }, [customPhoto]);
+    
     return (
         <div className={`fixed inset-y-0 left-0 z-40 w-[240px] transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 flex flex-col h-full border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-shrink-0 ${isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
             {/* App Logo */}
             <div className="h-20 flex items-center px-6 border-b border-slate-100 dark:border-slate-800 pointer-events-auto shrink-0">
-                <Link to="/" className="flex items-center gap-2 cursor-pointer">
+                <Link to="/dashboard" className="flex items-center gap-2 cursor-pointer transition-transform hover:scale-105">
                     <img src="/logo.png" alt="GSTify.AI Logo" className="w-8 h-8 object-contain drop-shadow-sm" />
                     <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">GSTify.AI</span>
                 </Link>
@@ -65,6 +85,22 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 <Link to="/pricing" className="flex w-full items-center justify-center gap-2 rounded-lg h-10 px-4 bg-primary hover:bg-blue-600 text-white text-sm font-bold transition-all shadow-lg shadow-blue-500/30">
                     <span className="material-symbols-outlined text-[18px]">upgrade</span>
                     <span>Upgrade Plan</span>
+                </Link>
+            </div>
+            {/* Mobile Profile & Logout */}
+            <div className="md:hidden p-4 border-t border-slate-100 dark:border-slate-800 shrink-0 bg-slate-50 dark:bg-slate-800/10">
+                <Link to="/settings" onClick={() => setIsOpen && setIsOpen(false)} className="flex items-center gap-3 group">
+                    <div className="size-9 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 font-bold flex items-center justify-center border border-blue-200 dark:border-blue-800 overflow-hidden">
+                        {customPhoto && !imageError ? (
+                            <img src={customPhoto} alt={name} className="w-full h-full object-cover" onError={() => setImageError(true)} />
+                        ) : (
+                            avatarLetter
+                        )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-primary transition-colors">{name}</p>
+                        <p className="text-xs text-slate-500 truncate">Settings & Account</p>
+                    </div>
                 </Link>
             </div>
         </div>

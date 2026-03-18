@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
+import { getUserInvoices, saveUserInvoices } from '../utils/storage';
 
 const FraudDetection = () => {
     const navigate = useNavigate();
@@ -9,16 +10,16 @@ const FraudDetection = () => {
     const [editData, setEditData] = useState(null);
 
     useEffect(() => {
-        const stored = localStorage.getItem('approvedInvoices');
-        if (stored) {
-            setInvoices(JSON.parse(stored));
+        const stored = getUserInvoices();
+        if (stored && stored.length > 0) {
+            setInvoices(stored);
         }
     }, []);
 
     const handleDelete = (index) => {
         const updated = invoices.filter((_, i) => i !== index);
         setInvoices(updated);
-        localStorage.setItem('approvedInvoices', JSON.stringify(updated));
+        saveUserInvoices(updated);
     };
 
     const handleEdit = (index, inv) => {
@@ -30,7 +31,7 @@ const FraudDetection = () => {
         const updated = [...invoices];
         updated[index] = { ...editData };
         setInvoices(updated);
-        localStorage.setItem('approvedInvoices', JSON.stringify(updated));
+        saveUserInvoices(updated);
         setEditingIdx(null);
         setEditData(null);
     };
@@ -44,7 +45,7 @@ const FraudDetection = () => {
         const updated = [...invoices];
         updated[originalIdx] = { ...updated[originalIdx], status: 'Validated' };
         setInvoices(updated);
-        localStorage.setItem('approvedInvoices', JSON.stringify(updated));
+        saveUserInvoices(updated);
     };
 
     const flaggedInvoices = invoices
@@ -103,7 +104,7 @@ const FraudDetection = () => {
         <AppLayout>
 
             <div className="flex-1 overflow-y-auto w-full">
-                <div className="max-w-7xl mx-auto p-6 lg:p-10 flex flex-col gap-6">
+                <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-10 flex flex-col gap-6">
 
                     {/* Title Bar */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
@@ -209,12 +210,12 @@ const FraudDetection = () => {
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary">table_view</span> GSTR-1 Draft Generator
                             </h3>
-                            <div className="flex gap-3 w-full sm:w-auto">
-                                <button onClick={handleDownloadAllCSV} className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-lg h-9 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+                                <button onClick={handleDownloadAllCSV} className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                                     <span className="material-symbols-outlined text-[18px]">download</span>
                                     Download CSV
                                 </button>
-                                <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-lg h-9 px-4 bg-primary text-white text-sm font-bold hover:bg-blue-600 transition-colors shadow-sm">
+                                <button onClick={() => navigate('/export')} className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold hover:bg-blue-600 transition-colors shadow-sm">
                                     <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
                                     Generate Draft
                                 </button>

@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
+import { auth } from '../../firebase';
 
 const Navbar = () => {
     const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    const handleTryDemo = () => {
-        localStorage.removeItem('userName');
+    const handleTryDemo = async () => {
+        try { await signOut(auth); } catch (_) {}
         localStorage.removeItem('loginType');
+        sessionStorage.setItem('demoMode', 'true');
+        localStorage.setItem('userName', 'Guest User');
         navigate('/dashboard');
     };
     const [isDark, setIsDark] = useState(() => {
@@ -64,8 +68,18 @@ const Navbar = () => {
                                 {isDark ? 'light_mode' : 'dark_mode'}
                             </span>
                         </button>
-                        <Link to="/login" className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-t_navy dark:hover:text-white hidden sm:block">Log in</Link>
-                        <button onClick={handleTryDemo} className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold text-white bg-primary rounded-full hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30">
+                        {/* Desktop Log In Link */}
+                        <Link to="/login" className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-t_navy dark:hover:text-white hidden md:block">
+                            Log in
+                        </Link>
+
+                        {/* Mobile Log In Button (Replaces Try Demo on small screens) */}
+                        <Link to="/login" className="md:hidden inline-flex items-center justify-center px-4 py-1.5 text-xs font-semibold text-white bg-primary rounded-full hover:bg-blue-700 transition-colors shadow-md shadow-blue-500/30">
+                            Log in
+                        </Link>
+
+                        {/* Desktop Try Demo Button */}
+                        <button onClick={handleTryDemo} className="hidden md:inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold text-white bg-primary rounded-full hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30">
                             Try Demo
                         </button>
                         {/* Mobile menu button */}

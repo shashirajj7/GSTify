@@ -1,31 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { isLoggedIn, getGuestCredits, MAX_GUEST_CREDITS } from '../../utils/credits';
+import { useAuth } from '../../context/AuthContext';
+import { getGuestCredits, MAX_GUEST_CREDITS } from '../../utils/credits';
+import { getUserSettings } from '../../utils/storage';
 
 const Header = ({ toggleSidebar }) => {
+    const { currentUser, logout } = useAuth();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [userName, setUserName] = useState('Business Admin');
     const [guestCredits, setGuestCredits] = useState(getGuestCredits);
-    const [loggedIn, setLoggedIn] = useState(isLoggedIn);
+    const [localSettings, setLocalSettings] = useState(getUserSettings());
+    const [imageError, setImageError] = useState(false);
     const dropdownRef = useRef(null);
-    const fileInputRef = useRef(null);
     const navigate = useNavigate();
 
+    const displayName = localSettings?.firstName ? `${localSettings.firstName} ${localSettings.lastName || ''}`.trim() : (currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User');
+    const userEmail = localSettings?.email || currentUser?.email || '';
+    const customPhoto = localSettings?.profilePicture;
+    const finalPhotoUrl = customPhoto || currentUser?.photoURL;
+    const avatarLetter = displayName.charAt(0).toUpperCase();
+
+    // Update credit count whenever auth state changes
     useEffect(() => {
-        const storedName = localStorage.getItem('userName');
-        if (storedName) {
-            setUserName(storedName);
-        }
-        setLoggedIn(isLoggedIn());
         setGuestCredits(getGuestCredits());
+    }, [currentUser]);
+
+    // Listen for local profile updates
+    useEffect(() => {
+        const handleProfileUpdate = () => {
+            setLocalSettings(getUserSettings());
+        };
+        window.addEventListener('profileUpdated', handleProfileUpdate);
+        return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
     }, []);
 
-    const handleFileChange = (e) => {
-        if (e.target.files && e.target.files.length > 0) {
-            console.log("Files selected from Header:", e.target.files);
-            navigate('/validation');
-        }
-    };
+    // Reset image error state when the photo URL changes
+    useEffect(() => {
+        setImageError(false);
+    }, [finalPhotoUrl]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -46,11 +57,13 @@ const Header = ({ toggleSidebar }) => {
             document.documentElement.classList.add('dark');
             localStorage.theme = 'dark';
         }
-        // Force a re-render to update the icon
-        setIsDropdownOpen(prev => prev); // Hacky way to force re-render if needed, but the DOM class handles it mostly.
     };
 
-    const isDark = document.documentElement.classList.contains('dark');
+    const handleLogout = async () => {
+        setIsDropdownOpen(false);
+        await logout();
+        navigate('/login');
+    };
 
     return (
         <>
@@ -58,11 +71,20 @@ const Header = ({ toggleSidebar }) => {
             <div className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-10">
                 <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary">auto_awesome_mosaic</span>
-                    <Link to="/" className="font-bold text-lg">GSTify.AI</Link>
+                    <Link to="/dashboard" className="font-bold text-lg hover:text-primary transition-colors">GSTify.AI</Link>
                 </div>
-                <button className="text-slate-600 dark:text-slate-300" onClick={toggleSidebar}>
-                    <span className="material-symbols-outlined">menu</span>
-                </button>
+                <div className="flex items-center gap-3">
+                    <Link to="/settings" className="flex items-center justify-center bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold rounded-full size-8 border border-blue-200 dark:border-blue-800 shadow-sm cursor-pointer select-none overflow-hidden">
+                        {finalPhotoUrl && !imageError ? (
+                            <img src={finalPhotoUrl} alt={displayName} className="w-full h-full object-cover" onError={() => setImageError(true)} />
+                        ) : (
+                            avatarLetter
+                        )}
+                    </Link>
+                    <button className="text-slate-600 dark:text-slate-300" onClick={toggleSidebar}>
+                        <span className="material-symbols-outlined">menu</span>
+                    </button>
+                </div>
             </div>
 
             {/* Top Header Desktop */}
@@ -75,8 +97,8 @@ const Header = ({ toggleSidebar }) => {
                 </div>
 
                 <div className="flex items-center justify-end gap-3">
-                    {/* Guest Demo Credit Pill */}
-                    {!loggedIn && (
+                    {/* Guest Demo Credit Pill — only shown when NOT logged in with Firebase */}
+                    {!currentUser && (
                         <Link
                             to="/signup"
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all hover:-translate-y-0.5 ${
@@ -105,33 +127,39 @@ const Header = ({ toggleSidebar }) => {
                         <span className="material-symbols-outlined text-[20px] hidden dark:block">light_mode</span>
                     </button>
 
-                    {/* Profile Dropdown Container */}
+                    {/* Profile Dropdown */}
                     <div className="relative ml-2" ref={dropdownRef}>
                         <div
-                            className="flex items-center justify-center bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold rounded-full size-9 border border-blue-200 dark:border-blue-800 cursor-pointer shadow-sm select-none"
+                            className="flex items-center justify-center bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold rounded-full size-9 border border-blue-200 dark:border-blue-800 cursor-pointer shadow-sm select-none overflow-hidden"
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            title={userName}
+                            title={displayName}
                         >
-                            {userName ? userName.charAt(0).toUpperCase() : 'A'}
+                            {finalPhotoUrl && !imageError ? (
+                                <img src={finalPhotoUrl} alt={displayName} className="w-full h-full object-cover" onError={() => setImageError(true)} />
+                            ) : (
+                                avatarLetter
+                            )}
                         </div>
 
-                        {/* Dropdown Menu */}
                         {isDropdownOpen && (
                             <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-2 z-50">
                                 <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 mb-1">
-                                    <p className="text-sm font-bold text-slate-900 dark:text-white">{userName}</p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 overflow-hidden text-ellipsis whitespace-nowrap">{userName.toLowerCase()}@gstify.ai</p>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{displayName}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{userEmail}</p>
                                 </div>
-                                <Link to="/settings" className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-3">
+                                <Link to="/settings" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-3">
                                     <span className="material-symbols-outlined text-[18px]">person</span> My Profile
                                 </Link>
-                                <Link to="/settings" className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-3">
+                                <Link to="/settings" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-3">
                                     <span className="material-symbols-outlined text-[18px]">settings</span> Account Settings
                                 </Link>
                                 <div className="border-t border-slate-100 dark:border-slate-700 my-1"></div>
-                                <Link to="/login" className="block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-3">
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full text-left block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-3"
+                                >
                                     <span className="material-symbols-outlined text-[18px]">logout</span> Log out
-                                </Link>
+                                </button>
                             </div>
                         )}
                     </div>

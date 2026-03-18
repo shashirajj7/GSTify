@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
+import { getUserInvoices, saveUserInvoices } from '../utils/storage';
 
 const Validation = () => {
     const navigate = useNavigate();
 
     const handleApprove = async () => {
-        const existing = JSON.parse(localStorage.getItem('approvedInvoices') || '[]');
+        const existing = getUserInvoices();
         const uploadDate = new Date().toLocaleDateString('en-GB'); // Date of upload
 
         if (aiData.is_multiple && aiData.invoices) {
@@ -34,7 +35,9 @@ const Validation = () => {
 
             // Generate the final CSVs, injecting upload date for each invoice
             try {
-                await fetch('http://localhost:5000/api/generate-csv', {
+                const host = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
+                const baseUrl = import.meta.env.VITE_API_URL || `http://${host}:5000`;
+                await fetch(`${baseUrl}/api/generate-csv`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -57,7 +60,7 @@ const Validation = () => {
             };
             existing.push(newInvoice);
         }
-        localStorage.setItem('approvedInvoices', JSON.stringify(existing));
+        saveUserInvoices(existing);
         navigate('/fraud-detection');
     };
 
@@ -130,22 +133,22 @@ const Validation = () => {
                         <span className="material-symbols-outlined text-lg">arrow_back</span>
                     </Link>
                     <div>
-                        <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            {documentName}
-                            <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-500 text-[10px] font-bold uppercase tracking-wide border border-yellow-200 dark:border-yellow-800/50">Needs Review</span>
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white flex flex-col items-start sm:flex-row sm:items-center gap-1 sm:gap-2">
+                            <span className="break-all line-clamp-1">{documentName}</span>
+                            <span className="shrink-0 px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-500 text-[10px] font-bold uppercase tracking-wide border border-yellow-200 dark:border-yellow-800/50 mt-1 sm:mt-0">Needs Review</span>
                         </h2>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Uploaded recently</p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <button onClick={() => navigate('/dashboard')} className="flex items-center justify-center gap-2 rounded-lg h-9 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 text-sm font-bold hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 transition-all">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+                    <button onClick={() => navigate('/dashboard')} className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 text-sm font-bold hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-200 dark:hover:border-red-800 transition-all">
                         <span className="material-symbols-outlined text-[18px]">flag</span>
                         Flag Issue
                     </button>
                     <button
                         onClick={handleApprove}
-                        className="flex items-center justify-center gap-2 rounded-lg h-9 px-4 bg-primary hover:bg-blue-600 text-white text-sm font-bold transition-colors shadow-sm shadow-blue-500/20"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-primary hover:bg-blue-600 text-white text-sm font-bold transition-colors shadow-sm shadow-blue-500/20"
                     >
                         <span className="material-symbols-outlined text-[18px]">save</span>
                         Approve &amp; Save
@@ -154,10 +157,10 @@ const Validation = () => {
             </div>
 
             {/* Split View Container */}
-            <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+            <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden">
 
                 {/* Left Panel: Document Viewer */}
-                <div className="w-full lg:w-1/2 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-[#0d141c] relative group min-h-[50vh] lg:min-h-0">
+                <div className="w-full lg:w-1/2 shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-[#0d141c] relative group h-[35vh] md:h-[50vh] lg:h-auto lg:min-h-0">
                     {/* Viewer Toolbar */}
                     <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-slate-800/80 backdrop-blur-sm text-white px-4 py-2 rounded-full z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg hidden md:flex">
                         <button className="hover:text-primary transition-colors"><span className="material-symbols-outlined text-sm">remove</span></button>
@@ -206,8 +209,8 @@ const Validation = () => {
                 </div>
 
                 {/* Right Panel: Extraction Data */}
-                <div className="w-full lg:w-1/2 bg-white dark:bg-[#1A2632] flex flex-col overflow-hidden h-[50vh] lg:h-auto">
-                    <div className="flex-1 overflow-y-auto p-4 lg:p-6">
+                <div className="w-full lg:w-1/2 shrink-0 bg-white dark:bg-[#1A2632] flex flex-col lg:overflow-hidden h-auto lg:h-auto">
+                    <div className="flex-col lg:flex-1 lg:overflow-y-auto p-4 lg:p-6">
 
                         {/* AI Summary Card */}
                         <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl p-4 mb-6 flex items-start gap-4 shadow-sm">

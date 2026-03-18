@@ -1,11 +1,14 @@
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
 .Python
 env/
 venv/
+ENV/
+env.bak/
+venv.bak/
 .env
+.env.*
 SROIE2019/
 *.log
 archive/
@@ -13,3 +16,6 @@ output/
 temp_uploads/
 *.jpg
 *.txt
+.idea/
+.vscode/
+.DS_Store

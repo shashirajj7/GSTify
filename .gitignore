@@ -1,7 +1,12 @@
 node_modules
 dist
 __pycache__
-*.pyc
+*.py[cod]
 .env
+.env.*
+*.local
 temp_uploads
 output
+.idea/
+.vscode/
+.DS_Store

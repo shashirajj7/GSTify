@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
+import { getUserInvoices } from '../utils/storage';
 
 const Export = () => {
     const [isExporting, setIsExporting] = useState(false);
     const [invoices, setInvoices] = useState([]);
+    const [toastMessage, setToastMessage] = useState('');
 
     useEffect(() => {
-        const stored = localStorage.getItem('approvedInvoices');
-        if (stored) {
-            setInvoices(JSON.parse(stored));
+        const stored = getUserInvoices();
+        if (stored && stored.length > 0) {
+            setInvoices(stored);
         }
     }, []);
 
@@ -61,8 +63,15 @@ const Export = () => {
 
     return (
         <AppLayout>
+            {/* Toast Notification */}
+            {toastMessage && (
+                <div className="fixed top-20 right-4 md:right-8 z-50 bg-slate-800 dark:bg-slate-700 text-white px-4 py-3 rounded-lg shadow-xl shadow-black/10 flex items-center gap-3 animate-in fade-in slide-in-from-top-10 duration-300 border border-white/10">
+                    <span className="material-symbols-outlined text-blue-400">info</span>
+                    <span className="font-bold text-sm">{toastMessage}</span>
+                </div>
+            )}
             <div className="flex-1 overflow-y-auto w-full">
-                <div className="max-w-7xl mx-auto p-6 lg:p-10 flex flex-col gap-8">
+                <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-10 flex flex-col gap-8">
 
                     {/* Header */}
                     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -70,8 +79,8 @@ const Export = () => {
                             <h2 className="text-slate-900 dark:text-white text-3xl font-extrabold tracking-tight">GSTR-1 Export</h2>
                             <p className="text-secondary text-sm md:text-base">Generate offline tool compatible CSV/JSON for GST portal filing.</p>
                         </div>
-                        <div className="flex gap-3">
-                            <button className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-white dark:bg-[#1A2632] border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
+                        <div className="flex gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+                            <button onClick={() => { setToastMessage('Export history overview will be available in the next update!'); setTimeout(() => setToastMessage(''), 3000); }} className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-white dark:bg-[#1A2632] border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
                                 <span className="material-symbols-outlined text-[18px]">history</span>
                                 Export History
                             </button>

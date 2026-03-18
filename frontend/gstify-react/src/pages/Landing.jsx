@@ -2,14 +2,18 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
+import { signOut } from 'firebase/auth';
+import { auth } from '../firebase';
 
 const Landing = () => {
     const navigate = useNavigate();
 
-    const handleTryDemo = () => {
-        // Clear any existing session so Try Demo always starts as a guest
-        localStorage.removeItem('userName');
+    const handleTryDemo = async () => {
+        // Sign out of Firebase so Try Demo always starts as a guest
+        try { await signOut(auth); } catch (_) {}
         localStorage.removeItem('loginType');
+        sessionStorage.setItem('demoMode', 'true');
+        localStorage.setItem('userName', 'Guest User');
         navigate('/dashboard');
     };
 
@@ -47,7 +51,7 @@ const Landing = () => {
 
             <main className="flex-1">
                 {/* Hero Section */}
-                <section className="pt-32 pb-20 lg:pt-40 lg:pb-28 overflow-hidden">
+                <section className="pt-24 pb-12 md:pt-32 md:pb-20 lg:pt-40 lg:pb-28 overflow-hidden">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
                         <div className="absolute top-0 right-0 -mr-20 lg:-mr-40 w-[500px] h-[500px] bg-blue-50/50 rounded-full blur-3xl -z-10 text-primary"></div>
                         <div className="absolute top-40 left-0 -ml-20 w-[300px] h-[300px] bg-blue-50/30 rounded-full blur-2xl -z-10 text-primary"></div>
@@ -81,7 +85,7 @@ const Landing = () => {
 
                             <div className="relative lg:ml-10">
                                 {/* Intelligent Invoice Scanner Animation */}
-                                <div className="relative w-full max-w-lg mx-auto transform hover:-translate-y-4 transition-transform duration-700">
+                                <div className="relative w-full max-w-sm md:max-w-lg mx-auto transform hover:-translate-y-4 transition-transform duration-700">
                                     <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
                                     <div className="relative bg-[#0F172A] rounded-2xl shadow-[0_20px_50px_rgba(8,_112,_184,_0.15)] border border-slate-700/80 overflow-hidden aspect-[4/3] flex flex-col z-10">
                                         {/* Scanner Header */}
@@ -166,7 +170,7 @@ const Landing = () => {
                 </section>
 
                 {/* Trust Indicators Section */}
-                <section className="py-12 bg-white border-y border-slate-100">
+                <section className="py-8 md:py-12 bg-white border-y border-slate-100">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
                             <div className="flex items-center gap-2 text-slate-500 font-semibold"><span className="material-symbols-outlined text-green-500">verified</span> GSTN Compatible</div>
@@ -178,7 +182,7 @@ const Landing = () => {
                 </section>
 
                 {/* Problem Section */}
-                <section className="py-20 bg-gray-50">
+                <section className="py-12 md:py-20 bg-gray-50">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="text-center max-w-2xl mx-auto mb-16">
                             <h2 className="text-3xl md:text-4xl font-bold text-t_navy mb-4">
@@ -191,7 +195,7 @@ const Landing = () => {
                         <div className="grid md:grid-cols-3 gap-8">
                             {/* Card 1 */}
                             <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-blue-900/5 hover:border-slate-200 transition-all duration-300 transform hover:-translate-y-1">
-                                <h2 className="text-[48px] font-black text-primary mb-2">80%</h2>
+                                <h2 className="text-4xl md:text-[48px] font-black text-primary mb-2">80%</h2>
                                 <h3 className="text-xl font-bold text-slate-900 mb-3">Manual Entry Default</h3>
                                 <p className="text-slate-600 leading-relaxed">
                                     80% of Indian MSMEs still manually enter invoices into their accounting software, severely limiting their bandwidth.

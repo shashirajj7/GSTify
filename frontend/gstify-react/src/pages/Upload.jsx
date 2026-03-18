@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import CreditLimitModal from '../components/CreditLimitModal';
 import { isLoggedIn, getGuestCredits, useGuestCredit, MAX_GUEST_CREDITS } from '../utils/credits';
@@ -12,6 +12,12 @@ const Upload = () => {
     const [uploadProgress, setUploadProgress] = useState(0);
     const [showCreditModal, setShowCreditModal] = useState(false);
     const [credits, setCredits] = useState(() => getGuestCredits());
+    const [toastMessage, setToastMessage] = useState('');
+
+    const showToast = (message) => {
+        setToastMessage(message);
+        setTimeout(() => setToastMessage(''), 4000);
+    };
 
     const loggedIn = isLoggedIn();
 
@@ -61,11 +67,14 @@ const Upload = () => {
 
         try {
             // Send actual request to API
+            // Dynamically resolve API URL so it works on any IP, avoiding 'localhost' IPv6 issues
+            const host = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
+            const baseUrl = import.meta.env.VITE_API_URL || `http://${host}:5000`;
             const formData = new FormData();
-            let targetUrl = 'http://localhost:5000/api/process-multiple';
+            let targetUrl = `${baseUrl}/api/process-multiple`;
 
             if (files.length === 1) {
-                targetUrl = 'http://localhost:5000/api/process-invoice';
+                targetUrl = `${baseUrl}/api/process-invoice`;
                 formData.append('file', files[0]);
             } else {
                 Array.from(files).forEach(f => formData.append('files', f));
@@ -89,14 +98,14 @@ const Upload = () => {
                     navigate('/validation');
                 }, 500);
             } else {
-                alert(`Error processing invoice: ${data.error || 'Unknown error'}`);
+                showToast(`Error processing invoice: ${data.error || 'Unknown error'}`);
                 setIsUploading(false);
                 setUploadProgress(0);
             }
         } catch (error) {
             clearInterval(progressInterval);
             console.error("Upload failed", error);
-            alert("Failed to connect to the AI Agent API. Make sure it is running on port 5000.");
+            showToast("Failed to connect to the AI Agent API. Make sure it is running on port 5000.");
             setIsUploading(false);
             setUploadProgress(0);
         }
@@ -137,12 +146,20 @@ const Upload = () => {
 
     return (
         <AppLayout>
+            {/* Toast Notification */}
+            {toastMessage && (
+                <div className="fixed top-20 right-4 md:right-8 z-50 bg-red-600 text-white px-4 py-3 rounded-lg shadow-xl shadow-black/10 flex items-center gap-3 animate-in fade-in slide-in-from-top-10 duration-300 border border-white/20">
+                    <span className="material-symbols-outlined">error</span>
+                    <span className="font-bold text-sm">{toastMessage}</span>
+                </div>
+            )}
+            
             {showCreditModal && (
                 <CreditLimitModal onClose={() => setShowCreditModal(false)} />
             )}
 
             <div className="flex-1 overflow-y-auto w-full p-4 md:p-8 lg:px-12 flex flex-col justify-center items-center">
-                <div className="w-full max-w-2xl bg-white dark:bg-[#1A2632] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-8 md:p-12">
+                <div className="w-full max-w-2xl bg-white dark:bg-[#1A2632] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 md:p-12">
 
                     <div className="text-center mb-8">
                         <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-2">Upload Invoices</h2>
@@ -169,7 +186,7 @@ const Upload = () => {
                                 <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-inner">
                                     <span className="material-symbols-outlined text-primary text-4xl">cloud_upload</span>
                                 </div>
-                                <h3 className="text-slate-900 dark:text-white text-lg font-bold mb-2">Drag &amp; Drop files here</h3>
+                                <h3 className="text-slate-900 dark:text-white text-lg font-bold mb-2 text-center">Tap or Drag & Drop here</h3>
                                 <p className="text-slate-500 text-sm mb-6 text-center">
                                     <span className="font-semibold text-slate-700 dark:text-slate-300">Supported Formats:</span> PDF, JPG, PNG (Max 5MB)
                                 </p>
@@ -191,9 +208,9 @@ const Upload = () => {
                                                 : `${credits} of ${MAX_GUEST_CREDITS} free demo upload${credits !== 1 ? 's' : ''} remaining`}
                                         </span>
                                     </div>
-                                    <a href="/signup" className="text-xs font-bold text-primary hover:underline">
+                                    <Link to="/signup" className="text-xs font-bold text-primary hover:underline">
                                         Upgrade →
-                                    </a>
+                                    </Link>
                                 </div>
                             )}
                         </>

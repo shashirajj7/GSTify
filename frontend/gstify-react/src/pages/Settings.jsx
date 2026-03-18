@@ -1,32 +1,178 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AppLayout from '../components/layout/AppLayout';
+import { useAuth } from '../context/AuthContext';
+import { getUserSettings, saveUserSettings } from '../utils/storage';
 
 const Settings = () => {
     const [activeTab, setActiveTab] = useState('profile');
     const [isAnnual, setIsAnnual] = useState(true);
 
     // User Profile State
-    const [firstName, setFirstName] = useState('Business');
-    const [lastName, setLastName] = useState('Admin');
-    const [email, setEmail] = useState('admin@gstify.ai');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [email, setEmail] = useState('');
+    const [companyName, setCompanyName] = useState('GSTify.AI Pro Technologies');
+    const [profilePicture, setProfilePicture] = useState(null);
+    const fileInputRef = useRef(null);
+
+    // Security State
+    const { changePassword } = useAuth();
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwordError, setPasswordError] = useState('');
+    const [passwordSuccess, setPasswordSuccess] = useState('');
+    const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+    
+    // UI Feedback State
+    const [saveStatus, setSaveStatus] = useState({ show: false, message: '', type: 'success' });
+
+    const handleUpdatePassword = async () => {
+        setPasswordError('');
+        setPasswordSuccess('');
+        if (!newPassword || !confirmPassword) {
+            setPasswordError("Please fill out new password fields.");
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setPasswordError("New passwords do not match.");
+            return;
+        }
+        if (newPassword.length < 6) {
+            setPasswordError("Password must be at least 6 characters.");
+            return;
+        }
+        
+        setIsUpdatingPassword(true);
+        try {
+            await changePassword(newPassword);
+            setPasswordSuccess("Password updated successfully. You will remain logged in.");
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (error) {
+            console.error("Error updating password:", error);
+            if (error?.code === 'auth/requires-recent-login') {
+                setPasswordError("Security: This action requires a recent login. Please log out and log in again.");
+            } else {
+                setPasswordError("Failed to update password. " + (error?.message || ""));
+            }
+        } finally {
+            setIsUpdatingPassword(false);
+        }
+    };
 
     useEffect(() => {
-        const storedName = localStorage.getItem('userName');
-        if (storedName) {
-            // Simple split logic if it's a full name
-            const nameParts = storedName.split(' ');
-            setFirstName(nameParts[0]);
-            if (nameParts.length > 1) {
-                setLastName(nameParts.slice(1).join(' '));
-            } else {
-                setLastName('');
+        // First try to load from generic storage settings
+        const settings = getUserSettings();
+        if (settings) {
+            if (settings.firstName) setFirstName(settings.firstName);
+            if (settings.lastName) setLastName(settings.lastName);
+            if (settings.email) setEmail(settings.email);
+            if (settings.companyName) setCompanyName(settings.companyName);
+            if (settings.profilePicture) setProfilePicture(settings.profilePicture);
+        } else {
+            // Fallback to reading the AuthContext saved name just for initial population
+            const storedName = localStorage.getItem('userName');
+            if (storedName) {
+                const nameParts = storedName.split(' ');
+                setFirstName(nameParts[0]);
+                if (nameParts.length > 1) {
+                    setLastName(nameParts.slice(1).join(' '));
+                } else {
+                    setLastName('');
+                }
+                const generatedEmail = `${storedName.toLowerCase().replace(/\s+/g, '')}@gstify.ai`;
+                setEmail(localStorage.getItem('userEmail') || generatedEmail); // or actual email if we had it
             }
-            setEmail(`${storedName.toLowerCase().replace(/\s+/g, '')}@gstify.ai`);
         }
     }, []);
 
+    const handleSaveProfile = () => {
+        saveUserSettings({
+            firstName,
+            lastName,
+            email,
+            companyName,
+            profilePicture
+        });
+        
+        // Dispatch event so Header and Sidebar update instantly
+        window.dispatchEvent(new Event('profileUpdated'));
+
+        setSaveStatus({ show: true, message: 'Profile settings saved successfully!', type: 'success' });
+        setTimeout(() => setSaveStatus({ show: false, message: '', type: 'success' }), 3000);
+    };
+
+    const handlePhotoChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (!file.type.match('image.*')) {
+                setSaveStatus({ show: true, message: 'Please select a valid image (JPEG, PNG).', type: 'error' });
+                setTimeout(() => setSaveStatus({ show: false, message: '', type: 'success' }), 3000);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onerror = () => {
+                    setSaveStatus({ show: true, message: 'Failed to open image. It might be corrupted or unsupported.', type: 'error' });
+                    setTimeout(() => setSaveStatus({ show: false, message: '', type: 'success' }), 3000);
+                };
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 256;
+                    const MAX_HEIGHT = 256;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = Math.round(width);
+                    canvas.height = Math.round(height);
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Export as severely compressed JPEG to guarantee it fits in LocalStorage
+                    const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    setProfilePicture(compressedDataUrl);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+            
+            // Clear input value so the exact same file can be selected again
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleRemovePhoto = () => {
+        setProfilePicture(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
     return (
         <AppLayout>
+            {/* Toast Notification */}
+            {saveStatus.show && (
+                <div className={`fixed top-20 right-4 md:right-8 z-50 ${saveStatus.type === 'success' ? 'bg-green-600' : 'bg-red-600'} text-white px-4 py-3 rounded-lg shadow-xl shadow-black/10 flex items-center gap-3 animate-in fade-in slide-in-from-top-10 duration-300 border border-white/20`}>
+                    <span className="material-symbols-outlined">{saveStatus.type === 'success' ? 'check_circle' : 'error'}</span>
+                    <span className="font-bold text-sm">{saveStatus.message}</span>
+                </div>
+            )}
+            
             <div className="flex-1 overflow-y-auto w-full p-4 md:p-8 lg:px-12">
                 <div className="max-w-4xl mx-auto flex flex-col gap-8">
 
@@ -78,15 +224,29 @@ const Settings = () => {
                                     <div>
                                         <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Profile Information</h3>
                                         <div className="flex items-center gap-6 mb-6">
-                                            <div className="w-20 h-20 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center text-3xl border border-blue-200 dark:border-blue-800 shadow-sm relative group select-none">
-                                                <span>{firstName ? firstName.charAt(0).toUpperCase() : 'A'}</span>
+                                            <input 
+                                                type="file" 
+                                                ref={fileInputRef} 
+                                                onChange={handlePhotoChange} 
+                                                accept="image/*" 
+                                                className="hidden" 
+                                            />
+                                            <div 
+                                                className="w-20 h-20 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center text-3xl border border-blue-200 dark:border-blue-800 shadow-sm relative group select-none overflow-hidden"
+                                                onClick={() => fileInputRef.current?.click()}
+                                            >
+                                                {profilePicture ? (
+                                                    <img src={profilePicture} alt="Profile" className="w-full h-full object-cover" onError={handleRemovePhoto} />
+                                                ) : (
+                                                    <span>{firstName ? firstName.charAt(0).toUpperCase() : 'A'}</span>
+                                                )}
                                                 <div className="absolute inset-0 bg-black/50 rounded-full hidden group-hover:flex items-center justify-center cursor-pointer transition-all">
                                                     <span className="material-symbols-outlined text-white text-[24px]">photo_camera</span>
                                                 </div>
                                             </div>
                                             <div>
-                                                <button className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-bold rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors mr-3">Change Photo</button>
-                                                <button className="px-4 py-2 text-red-600 dark:text-red-400 text-sm font-bold hover:underline">Remove</button>
+                                                <button type="button" onClick={() => fileInputRef.current?.click()} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-bold rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors mr-3">Change Photo</button>
+                                                <button type="button" onClick={handleRemovePhoto} className="px-4 py-2 text-red-600 dark:text-red-400 text-sm font-bold hover:underline">Remove</button>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -104,12 +264,12 @@ const Settings = () => {
                                             </div>
                                             <div className="md:col-span-2">
                                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Company Name (GSTIN Registered)</label>
-                                                <input type="text" defaultValue="GSTify.AI Pro Technologies" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
+                                                <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
                                             </div>
                                         </div>
                                     </div>
                                     <div className="pt-6 border-t border-slate-200 dark:border-slate-800 flex justify-end">
-                                        <button className="px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-lg hover:bg-blue-600 transition-colors shadow-md shadow-blue-500/20">Save Changes</button>
+                                        <button type="button" onClick={handleSaveProfile} className="px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-lg hover:bg-blue-600 transition-colors shadow-md shadow-blue-500/20">Save Changes</button>
                                     </div>
                                 </div>
                             )}
@@ -121,22 +281,38 @@ const Settings = () => {
                                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Update your password associated with your account.</p>
 
                                         <div className="space-y-4 max-w-md">
+                                            {passwordError && (
+                                                <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-200 dark:border-red-800">
+                                                    {passwordError}
+                                                </div>
+                                            )}
+                                            {passwordSuccess && (
+                                                <div className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 p-3 rounded-lg text-sm border border-emerald-200 dark:border-emerald-800">
+                                                    {passwordSuccess}
+                                                </div>
+                                            )}
                                             <div>
                                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Current Password</label>
-                                                <input type="password" placeholder="••••••••" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
+                                                <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">New Password</label>
-                                                <input type="password" placeholder="••••••••" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
+                                                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Confirm New Password</label>
-                                                <input type="password" placeholder="••••••••" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
+                                                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
                                             </div>
                                         </div>
                                     </div>
                                     <div className="pt-6 border-t border-slate-200 dark:border-slate-800 flex justify-end">
-                                        <button className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold rounded-lg hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors">Update Password</button>
+                                        <button 
+                                            onClick={handleUpdatePassword} 
+                                            disabled={isUpdatingPassword}
+                                            className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold rounded-lg hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors disabled:opacity-50"
+                                        >
+                                            {isUpdatingPassword ? 'Updating...' : 'Update Password'}
+                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -149,36 +325,36 @@ const Settings = () => {
 
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
-                                                <div>
+                                                <div className="pr-4">
                                                     <p className="font-bold text-slate-900 dark:text-white text-sm">GSTR-1 Deadlines</p>
                                                     <p className="text-xs text-slate-500 mt-1">Get reminded 3 days before filing deadline.</p>
                                                 </div>
-                                                <div className="relative inline-block w-10 mr-2 align-middle select-nones transition duration-200 ease-in">
-                                                    <input type="checkbox" name="toggle" id="toggle1" className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 border-slate-300 appearance-none cursor-pointer transition-transform duration-200 ease-in-out cursor-pointer checked:bg-primary checked:translate-x-full checked:border-primary" defaultChecked />
-                                                    <label htmlFor="toggle1" className="toggle-label block overflow-hidden h-5 rounded-full bg-slate-300 cursor-pointer"></label>
-                                                </div>
+                                                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                                                    <input type="checkbox" className="sr-only peer" defaultChecked />
+                                                    <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                                </label>
                                             </div>
 
                                             <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
-                                                <div>
+                                                <div className="pr-4">
                                                     <p className="font-bold text-slate-900 dark:text-white text-sm">Anomaly Detection Alerts</p>
                                                     <p className="text-xs text-slate-500 mt-1">Immediate email when GSTIN or Tax logic fails.</p>
                                                 </div>
-                                                <div className="relative inline-block w-10 mr-2 align-middle select-nones transition duration-200 ease-in">
-                                                    <input type="checkbox" name="toggle" id="toggle2" className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 border-slate-300 appearance-none cursor-pointer transition-transform duration-200 ease-in-out cursor-pointer checked:bg-primary checked:translate-x-full checked:border-primary" defaultChecked />
-                                                    <label htmlFor="toggle2" className="toggle-label block overflow-hidden h-5 rounded-full bg-slate-300 cursor-pointer"></label>
-                                                </div>
+                                                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                                                    <input type="checkbox" className="sr-only peer" defaultChecked />
+                                                    <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                                </label>
                                             </div>
 
                                             <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
-                                                <div>
+                                                <div className="pr-4">
                                                     <p className="font-bold text-slate-900 dark:text-white text-sm">Product Updates</p>
                                                     <p className="text-xs text-slate-500 mt-1">News about the latest AI models and features.</p>
                                                 </div>
-                                                <div className="relative inline-block w-10 mr-2 align-middle select-nones transition duration-200 ease-in">
-                                                    <input type="checkbox" name="toggle" id="toggle3" className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 border-slate-300 appearance-none cursor-pointer transition-transform duration-200 ease-in-out cursor-pointer checked:bg-primary checked:translate-x-full checked:border-primary" />
-                                                    <label htmlFor="toggle3" className="toggle-label block overflow-hidden h-5 rounded-full bg-slate-300 cursor-pointer"></label>
-                                                </div>
+                                                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                                                    <input type="checkbox" className="sr-only peer" />
+                                                    <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                                </label>
                                             </div>
                                         </div>
                                     </div>
@@ -277,17 +453,17 @@ const Settings = () => {
                                     {/* Payment Method */}
                                     <div>
                                         <h4 className="font-bold text-slate-900 dark:text-white mb-4">Payment Method</h4>
-                                        <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 lg:w-2/3 shadow-sm">
+                                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 lg:w-2/3 shadow-sm">
                                             <div className="flex items-center gap-4">
-                                                <div className="w-12 h-8 bg-white border border-slate-200 rounded flex items-center justify-center p-1 shadow-sm">
+                                                <div className="w-12 h-8 bg-white border border-slate-200 rounded flex items-center justify-center p-1 shadow-sm shrink-0">
                                                     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/1280px-Mastercard-logo.svg.png" alt="Mastercard" className="h-full object-contain" />
                                                 </div>
-                                                <div>
-                                                    <p className="font-bold text-slate-900 dark:text-white text-sm">Mastercard ending in 4242</p>
+                                                <div className="min-w-0">
+                                                    <p className="font-bold text-slate-900 dark:text-white text-sm truncate">Mastercard ending in 4242</p>
                                                     <p className="text-xs text-slate-500 mt-0.5">Expires 12/26</p>
                                                 </div>
                                             </div>
-                                            <button className="text-sm font-bold text-primary hover:underline">Edit</button>
+                                            <button type="button" onClick={() => { setSaveStatus({ show: true, message: 'Payment method editing is mocked in demo mode.', type: 'error' }); setTimeout(() => setSaveStatus({ show: false, message: '', type: 'success' }), 3000); }} className="w-full sm:w-auto text-sm font-bold text-primary hover:underline bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-lg sm:p-0 sm:bg-transparent sm:dark:bg-transparent">Edit</button>
                                         </div>
                                     </div>
                                 </div>
@@ -298,21 +474,7 @@ const Settings = () => {
 
                 </div>
             </div>
-            {/* Custom styles for toggles since Tailwind forms isn't installed */}
-            <style dangerouslySetInnerHTML={{
-                __html: `
-                .toggle-checkbox:checked {
-                    right: 0;
-                    border-color: #137fec;
-                }
-                .toggle-checkbox:checked + .toggle-label {
-                    background-color: #137fec;
-                }
-                .toggle-checkbox {
-                    right: 20px;
-                    z-index: 1;
-                }
-            `}} />
+
         </AppLayout>
     );
 };
