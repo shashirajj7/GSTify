@@ -9,8 +9,7 @@ from werkzeug.utils import secure_filename
 # Fix OpenMP error from original script
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
-from tools.preprocessing_tool import preprocess
-from tools.ocr_tool import extract_text
+
 from tools.parser_tool import parse_fields
 from tools.gst_engine import calculate_tax_split
 import config
@@ -39,6 +38,8 @@ def health_check():
 
 @app.route('/api/process-invoice', methods=['POST'])
 def process_invoice():
+    from tools.preprocessing_tool import preprocess
+    from tools.ocr_tool import extract_text
     if 'file' not in request.files:
         return jsonify({"error": "No file part in the request"}), 400
         
@@ -132,6 +133,8 @@ def process_invoice():
 
 @app.route('/api/process-multiple', methods=['POST'])
 def process_multiple():
+    from tools.preprocessing_tool import preprocess
+    from tools.ocr_tool import extract_text
     if 'files' not in request.files:
         return jsonify({"error": "No files part in the request"}), 400
         
