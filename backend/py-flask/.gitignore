@@ -19,3 +19,9 @@ temp_uploads/
 .idea/
 .vscode/
 .DS_Store
+
+# Build folders (extra safety)
+build/
+
+# Flask instance folder (IMPORTANT)
+instance/

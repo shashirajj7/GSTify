@@ -10,3 +10,16 @@ output
 .idea/
 .vscode/
 .DS_Store
+
+# Python virtual env
+venv/
+env/
+
+# Logs
+*.log
+
+# Build folders (extra safety)
+build/
+
+# Flask instance folder (IMPORTANT)
+instance/
