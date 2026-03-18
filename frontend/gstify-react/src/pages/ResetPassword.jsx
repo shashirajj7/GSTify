@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
-import { auth } from '../firebase';
+import { auth } from '../firebase.js';
 
 const ResetPassword = () => {
     const navigate = useNavigate();
