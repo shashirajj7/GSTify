@@ -18,9 +18,6 @@ dist-ssr
 .env.test.local
 .env.production.local
 
-# API keys and sensitive config
-src/firebase.js
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
