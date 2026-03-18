@@ -35,6 +35,7 @@ const Validation = () => {
 
             // Generate the final CSVs, injecting upload date for each invoice
             try {
+                // Prioritize production URL from .env, fallback to dynamic local resolution
                 const host = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
                 const baseUrl = import.meta.env.VITE_API_URL || `http://${host}:5000`;
                 await fetch(`${baseUrl}/api/generate-csv`, {

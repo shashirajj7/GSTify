@@ -67,7 +67,7 @@ const Upload = () => {
 
         try {
             // Send actual request to API
-            // Dynamically resolve API URL so it works on any IP, avoiding 'localhost' IPv6 issues
+            // Prioritize production URL from .env, fallback to dynamic local resolution
             const host = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
             const baseUrl = import.meta.env.VITE_API_URL || `http://${host}:5000`;
             const formData = new FormData();
@@ -105,7 +105,7 @@ const Upload = () => {
         } catch (error) {
             clearInterval(progressInterval);
             console.error("Upload failed", error);
-            showToast("Failed to connect to the AI Agent API. Make sure it is running on port 5000.");
+            showToast("Failed to connect to the AI Agent API. The service might be sleeping or offline.");
             setIsUploading(false);
             setUploadProgress(0);
         }
