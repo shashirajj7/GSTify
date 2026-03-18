@@ -1,0 +1,7 @@
+flask
+flask-cors
+pandas
+pytesseract
+opencv-python
+werkzeug
+gunicorn    

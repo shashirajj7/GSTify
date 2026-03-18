@@ -16,6 +16,7 @@ output/
 temp_uploads/
 *.jpg
 *.txt
+!requirements.txt
 .idea/
 .vscode/
 .DS_Store
