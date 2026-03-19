@@ -21,8 +21,14 @@ app = Flask(__name__)
 # Allow CORS for the React frontend (running on Vite's default ports or any local port)
 
 CORS(app, resources={
-    r"/api/*": {
-        "origins": ["https://gstify-five.vercel.app"]
+    r"/*": {
+        "origins": [
+            "https://gstify-five.vercel.app",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173"
+        ],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
     }
 })
 
