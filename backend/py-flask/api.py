@@ -19,7 +19,12 @@ from tools.gstr9_generator import generate as generate_gstr9
 
 app = Flask(__name__)
 # Allow CORS for the React frontend (running on Vite's default ports or any local port)
-CORS(app)
+
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["https://gstify-five.vercel.app"]
+    }
+})
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'temp_uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
