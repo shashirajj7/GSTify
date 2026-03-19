@@ -11,7 +11,7 @@
   }
 
   body {
-    @apply font-sans text-base antialiased bg-background-light text-slate-900 border-none m-0 p-0 selection:bg-blue-500/30 selection:text-blue-900 dark:selection:text-blue-100;
+    @apply font-sans text-base antialiased bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 border-none m-0 p-0 selection:bg-blue-500/30 selection:text-blue-900 dark:selection:text-blue-100;
   }
 
   h1 {

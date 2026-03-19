@@ -17,14 +17,7 @@ export default {
       fontFamily: {
         "sans": ["Inter", "SF Pro Display", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Manrope", "sans-serif"],
       },
-      borderRadius: {
-        "DEFAULT": "0.25rem",
-        "lg": "0.5rem",
-        "xl": "0.75rem",
-        "2xl": "1rem",
-        "full": "9999px"
-      },
     },
   },
-  plugins: [],
+  plugins: [require('tailwindcss-animate')],
 }
