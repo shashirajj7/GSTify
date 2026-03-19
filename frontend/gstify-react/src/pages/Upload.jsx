@@ -21,6 +21,39 @@ const Upload = () => {
 
     const loggedIn = isLoggedIn();
 
+    const getBaseUrl = () => {
+        const host = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
+        return import.meta.env.VITE_API_URL || `http://${host}:5000`;
+    };
+
+    const pingBackend = async (baseUrl) => {
+        try {
+            const res = await fetch(`${baseUrl}/api/health`, { method: 'GET' });
+            return res.ok;
+        } catch {
+            return false;
+        }
+    };
+
+    const doUpload = async (files, baseUrl) => {
+        const formData = new FormData();
+        let targetUrl = `${baseUrl}/api/process-multiple`;
+
+        if (files.length === 1) {
+            targetUrl = `${baseUrl}/api/process-invoice`;
+            formData.append('file', files[0]);
+        } else {
+            Array.from(files).forEach(f => formData.append('files', f));
+        }
+
+        const response = await fetch(targetUrl, {
+            method: 'POST',
+            body: formData,
+        });
+
+        return response;
+    };
+
     const simulateUpload = async (files) => {
         // Credit gate: only for guests
         if (!loggedIn) {
@@ -35,6 +68,28 @@ const Upload = () => {
 
         setIsUploading(true);
         setUploadProgress(10); // Start at 10%
+
+        const baseUrl = getBaseUrl();
+
+        // --- Wake-up ping: Render free tier sleeps after inactivity ---
+        const isAwake = await pingBackend(baseUrl);
+        if (!isAwake) {
+            showToast("Server is waking up... please wait a moment.");
+            // Wait up to 30s for Render to spin up, pinging every 5s
+            let awake = false;
+            for (let i = 0; i < 6; i++) {
+                await new Promise(r => setTimeout(r, 5000));
+                setUploadProgress(prev => Math.min(prev + 5, 50));
+                awake = await pingBackend(baseUrl);
+                if (awake) break;
+            }
+            if (!awake) {
+                showToast("The server is offline or taking too long. Please try again in a minute.");
+                setIsUploading(false);
+                setUploadProgress(0);
+                return;
+            }
+        }
 
         // Read files and store images natively for preview
         if (files && files.length > 0) {
@@ -66,24 +121,8 @@ const Upload = () => {
         }, 500);
 
         try {
-            // Send actual request to API
-            // Prioritize production URL from .env, fallback to dynamic local resolution
-            const host = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
-            const baseUrl = import.meta.env.VITE_API_URL || `http://${host}:5000`;
-            const formData = new FormData();
-            let targetUrl = `${baseUrl}/api/process-multiple`;
-
-            if (files.length === 1) {
-                targetUrl = `${baseUrl}/api/process-invoice`;
-                formData.append('file', files[0]);
-            } else {
-                Array.from(files).forEach(f => formData.append('files', f));
-            }
-
-            const response = await fetch(targetUrl, {
-                method: 'POST',
-                body: formData,
-            });
+            // Send actual request to API using doUpload helper
+            const response = await doUpload(files, baseUrl);
 
             const data = await response.json();
 
@@ -105,7 +144,7 @@ const Upload = () => {
         } catch (error) {
             clearInterval(progressInterval);
             console.error("Upload failed", error);
-            showToast("Failed to connect to the AI Agent API. The service might be sleeping or offline.");
+            showToast("Upload failed. Please check your connection and try again.");
             setIsUploading(false);
             setUploadProgress(0);
         }

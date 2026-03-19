@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import date as dt_date
 import uuid
 import pandas as pd
@@ -20,13 +21,18 @@ from tools.gstr9_generator import generate as generate_gstr9
 app = Flask(__name__)
 # Allow CORS for the React frontend (running on Vite's default ports or any local port)
 
+CORS_ORIGINS_RE = re.compile(
+    r"^https://[\w\-]+(\.vercel\.app)$"
+    r"|^http://localhost(:\d+)?$"
+    r"|^http://127\.0\.0\.1(:\d+)?$"
+)
+
+def cors_origin_allowed(origin):
+    return bool(origin and CORS_ORIGINS_RE.match(origin))
+
 CORS(app, resources={
     r"/*": {
-        "origins": [
-            "https://gstify-five.vercel.app",
-            "http://localhost:5173",
-            "http://127.0.0.1:5173"
-        ],
+        "origins": cors_origin_allowed,
         "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type"]
     }
