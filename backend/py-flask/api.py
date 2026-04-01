@@ -1,8 +1,9 @@
 import os
 import re
 import uuid
-import tempfile
 from datetime import date as dt_date
+import numpy as np
+import cv2
 
 import pandas as pd
 from flask import Flask, request, jsonify
@@ -71,18 +72,14 @@ def pdf_to_images(pdf_path: str) -> list:
     Returns a list of numpy arrays (one per page).
     """
     from pdf2image import convert_from_path
-    import numpy as np
-    import cv2
 
     pil_images = convert_from_path(pdf_path, dpi=200)
     cv_images = []
     for pil_img in pil_images:
-        # PIL RGB → numpy BGR
-        arr = cv2.cvtColor(
-            __import__("numpy").array(pil_img.convert("RGB")),
-            cv2.COLOR_RGB2BGR,
-        )
-        cv_images.append(arr)
+        # PIL RGB → numpy array → BGR (OpenCV format)
+        rgb_array = np.array(pil_img.convert("RGB"))
+        bgr_array = cv2.cvtColor(rgb_array, cv2.COLOR_RGB2BGR)
+        cv_images.append(bgr_array)
     return cv_images
 
 
@@ -97,7 +94,6 @@ def process_one_file(file_storage) -> dict:
     """
     from tools.preprocessing_tool import preprocess
     from tools.ocr_tool import extract_text
-    import numpy as np
 
     filename = secure_filename(file_storage.filename)
     ext = filename.rsplit(".", 1)[1].lower() if "." in filename else ""
