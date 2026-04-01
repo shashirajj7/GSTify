@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import { getUserInvoices, saveUserInvoices } from '../utils/storage';
+import { getBaseUrl } from '../utils/api';
 
 const Validation = () => {
     const navigate = useNavigate();
@@ -35,9 +36,7 @@ const Validation = () => {
 
             // Generate the final CSVs, injecting upload date for each invoice
             try {
-                // Prioritize production URL from .env, fallback to dynamic local resolution
-                const host = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
-                const baseUrl = import.meta.env.VITE_API_URL || `http://${host}:5000`;
+                const baseUrl = getBaseUrl();
                 await fetch(`${baseUrl}/api/generate-csv`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

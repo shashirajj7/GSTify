@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import CreditLimitModal from '../components/CreditLimitModal';
 import { isLoggedIn, getGuestCredits, useGuestCredit, MAX_GUEST_CREDITS } from '../utils/credits';
+import { getBaseUrl, pingBackend } from '../utils/api';
 
 const Upload = () => {
     const navigate = useNavigate();
@@ -21,19 +22,7 @@ const Upload = () => {
 
     const loggedIn = isLoggedIn();
 
-    const getBaseUrl = () => {
-        const host = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
-        return import.meta.env.VITE_API_URL || `http://${host}:5000`;
-    };
-
-    const pingBackend = async (baseUrl) => {
-        try {
-            const res = await fetch(`${baseUrl}/api/health`, { method: 'GET' });
-            return res.ok;
-        } catch {
-            return false;
-        }
-    };
+    // getBaseUrl and pingBackend are imported from utils/api.js
 
     const doUpload = async (files, baseUrl) => {
         const formData = new FormData();
@@ -49,6 +38,7 @@ const Upload = () => {
         const response = await fetch(targetUrl, {
             method: 'POST',
             body: formData,
+            // No Content-Type header — browser sets multipart/form-data with boundary automatically
         });
 
         return response;
@@ -72,15 +62,15 @@ const Upload = () => {
         const baseUrl = getBaseUrl();
 
         // --- Wake-up ping: Render free tier sleeps after inactivity ---
-        const isAwake = await pingBackend(baseUrl);
+        const isAwake = await pingBackend();
         if (!isAwake) {
             showToast("Server is waking up... please wait a moment.");
-            // Wait up to 30s for Render to spin up, pinging every 5s
+            // Wait up to 60s for Render to spin up, pinging every 5s
             let awake = false;
-            for (let i = 0; i < 6; i++) {
+            for (let i = 0; i < 12; i++) {
                 await new Promise(r => setTimeout(r, 5000));
-                setUploadProgress(prev => Math.min(prev + 5, 50));
-                awake = await pingBackend(baseUrl);
+                setUploadProgress(prev => Math.min(prev + 3, 50));
+                awake = await pingBackend();
                 if (awake) break;
             }
             if (!awake) {
@@ -221,13 +211,14 @@ const Upload = () => {
                                     ref={fileInputRef}
                                     onChange={handleFileChange}
                                     accept=".jpg,.jpeg,.png,.pdf"
+                                    // PDF, JPG, PNG all supported by the backend
                                 />
                                 <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-inner">
                                     <span className="material-symbols-outlined text-primary text-4xl">cloud_upload</span>
                                 </div>
                                 <h3 className="text-slate-900 dark:text-white text-lg font-bold mb-2 text-center">Tap or Drag & Drop here</h3>
                                 <p className="text-slate-500 text-sm mb-6 text-center">
-                                    <span className="font-semibold text-slate-700 dark:text-slate-300">Supported Formats:</span> PDF, JPG, PNG (Max 5MB)
+                                    <span className="font-semibold text-slate-700 dark:text-slate-300">Supported Formats:</span> PDF, JPG, PNG (Max 32MB)
                                 </p>
                                 <button onClick={(e) => { e.stopPropagation(); handleZoneClick(); }} className="px-6 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
                                     Browse Files

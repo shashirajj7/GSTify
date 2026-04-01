@@ -2,6 +2,8 @@ flask
 flask-cors
 pandas
 pytesseract
-opencv-python
+opencv-python-headless
+pdf2image
+Pillow
 werkzeug
-gunicorn    
+gunicorn
