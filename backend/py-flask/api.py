@@ -111,7 +111,6 @@ def process_one_file(file_storage) -> dict:
             if not raw_images:
                 raise ValueError("PDF has no pages or could not be converted.")
         elif ext in {"png", "jpg", "jpeg"}:
-            import cv2
             img = cv2.imread(file_path)
             if img is None:
                 raise ValueError("Could not read image file.")
@@ -170,6 +169,42 @@ def process_one_file(file_storage) -> dict:
 @app.route("/api/health", methods=["GET"])
 def health_check():
     return jsonify({"status": "ok", "message": "GSTify AI Agent is running 🚀"}), 200
+
+
+@app.route("/api/debug", methods=["GET"])
+def debug_info():
+    """Returns environment info to diagnose deployment issues."""
+    import sys, subprocess
+    info = {"python": sys.version}
+    # Check tesseract
+    try:
+        result = subprocess.run(["tesseract", "--version"], capture_output=True, text=True, timeout=5)
+        info["tesseract"] = result.stdout.strip() or result.stderr.strip()
+    except Exception as e:
+        info["tesseract"] = f"NOT FOUND: {e}"
+    # Check poppler/pdftoppm
+    try:
+        result = subprocess.run(["pdftoppm", "-v"], capture_output=True, text=True, timeout=5)
+        info["poppler"] = result.stderr.strip() or result.stdout.strip()
+    except Exception as e:
+        info["poppler"] = f"NOT FOUND: {e}"
+    # Check cv2
+    try:
+        info["opencv"] = cv2.__version__
+    except Exception as e:
+        info["opencv"] = f"ERROR: {e}"
+    # Check numpy
+    try:
+        info["numpy"] = np.__version__
+    except Exception as e:
+        info["numpy"] = f"ERROR: {e}"
+    # Check pytesseract
+    try:
+        import pytesseract
+        info["pytesseract"] = pytesseract.get_tesseract_version().vstring
+    except Exception as e:
+        info["pytesseract"] = f"ERROR: {e}"
+    return jsonify(info), 200
 
 
 @app.route("/api/process-invoice", methods=["POST"])
