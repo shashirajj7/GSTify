@@ -133,7 +133,7 @@ const Upload = () => {
 
                 setTimeout(() => {
                     navigate('/validation');
-                }, 500);
+                }, 1500);  // 1.5s so user sees 100% complete before navigating
             } else {
                 showToast(`Error processing invoice: ${data.error || 'Unknown error'}`);
                 setIsUploading(false);

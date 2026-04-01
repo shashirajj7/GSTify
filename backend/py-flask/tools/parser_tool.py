@@ -1,178 +1,238 @@
+"""
+parser_tool.py  —  Line-by-line OCR field extractor for GST invoices.
+
+Strategy:
+ - Every keyword + amount pair must exist on the SAME line.
+ - This prevents phone numbers, addresses, and product codes from
+   being misidentified as financial figures.
+ - CGST / SGST are summed independently before being returned as gst_amount.
+"""
+
 import re
 from typing import Optional
 
-# ---------------------------------------------------------------------------
-# Regex Patterns
-# ---------------------------------------------------------------------------
+# ── Patterns ──────────────────────────────────────────────────────────────────
 
-# Standard 15-character GSTIN format
-GSTIN_PATTERN = r"\b\d{2}[A-Z]{5}\d{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}\b"
+# Indian GSTIN: 2-digit state, 5-alpha PAN, 4-digit, 1-alpha, 1 check, Z, 1 check
+GSTIN_RE = re.compile(
+    r'\b([0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z])\b'
+)
 
-# Date: DD/MM/YYYY or DD-MM-YYYY or YYYY-MM-DD
-DATE_PATTERN = r"\b(\d{4}[-/]\d{2}[-/]\d{2}|\d{2}[-/]\d{2}[-/]\d{4})\b"
+# Currency amount — handles Indian 1,23,456.78 and Western 1,234,567.89
+# Must end with 1-2 decimal digits OR not have a following digit
+AMOUNT_RE = re.compile(
+    r'(?<![,\d])(\d{1,3}(?:,\d{2,3})*(?:\.\d{1,2})?|\d+\.\d{1,2})(?!\d)'
+)
 
-# Amount pattern — matches:
-#   1,00,000.00  |  1000.00  |  1,000  |  1000  |  10 000.00
-# Does NOT require decimal part anymore (fixes the ".00 required" bug)
-AMOUNT_PATTERN = r"(?<!\d)(\d{1,3}(?:[,\s]\d{2,3})*(?:\.\d{1,2})?)(?!\d)"
+# Invoice number labels
+INV_NO_RE = re.compile(
+    r'(?:invoice\s*(?:no\.?|number|#|num)|'
+    r'bill\s*(?:no\.?|number)|'
+    r'inv\s*(?:no\.?|#|num)|'
+    r'receipt\s*(?:no\.?|number|#))'
+    r'\s*[:\-#]?\s*([A-Z0-9][A-Z0-9/\-]{1,30})',
+    re.IGNORECASE,
+)
 
-# Minimum amount threshold — ignore tiny numbers (qty, HSN codes, page numbers)
-MIN_AMOUNT = 10.0
+# Date patterns
+DATE_RE = re.compile(
+    r'\b(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}|\d{4}[/\-]\d{2}[/\-]\d{2})\b'
+)
+
+# ── Amount keyword lists ───────────────────────────────────────────────────────
+
+TAXABLE_KWS = [
+    'taxable value', 'taxable amount', 'taxable val',
+    'total exclude gst', 'total excl gst', 'excl. gst', 'excl gst',
+    'subtotal', 'sub total', 'sub-total',
+    'net amount', 'net value', 'basic amount', 'base amount',
+    'assessable value', 'value before tax', 'amount before tax',
+]
+
+CGST_KWS  = ['cgst']
+SGST_KWS  = ['sgst', 'utgst']
+IGST_KWS  = ['igst']
+
+GST_TOTAL_KWS = [
+    'total gst', 'gst amount', 'gst total', 'total tax', 'tax amount',
+    'total inclusive gst',   # catches "Total Inclusive GST" as an alternative
+]
+
+TOTAL_KWS = [
+    'grand total', 'net payable', 'amount payable', 'total payable',
+    'invoice total', 'net total', 'total amount',
+    'total due', 'balance due', 'amount due',
+    'total:', 'total ',              # broad catches — lowest priority
+]
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _clean_amount(val_str: str) -> Optional[float]:
-    """Strip commas/spaces and convert to float. Returns None on failure."""
-    try:
-        return float(val_str.replace(",", "").replace(" ", ""))
-    except (ValueError, AttributeError):
-        return None
+def _amounts_in_line(line: str):
+    """Return all numeric amounts found in a line, as floats (right-to-left order)."""
+    raw = AMOUNT_RE.findall(line)
+    results = []
+    for s in raw:
+        try:
+            val = float(s.replace(',', ''))
+            results.append(val)
+        except ValueError:
+            pass
+    return results
 
 
-def extract_number_from_line(line: str) -> Optional[float]:
+def _last_amount(line: str) -> Optional[float]:
+    """The rightmost (last) amount on a line — usually the currency value in billing."""
+    amounts = _amounts_in_line(line)
+    return amounts[-1] if amounts else None
+
+
+def _norm(text: str) -> str:
+    """Lowercase and collapse whitespace."""
+    return re.sub(r'\s+', ' ', text.strip().lower())
+
+
+# ── Main entry ────────────────────────────────────────────────────────────────
+
+def parse_fields(raw_text: str) -> dict:
     """
-    Find all monetary amounts on a line and return the last (rightmost) one.
-    The last number on a line is almost always the actual value column.
+    Parse OCR text and return a dict with:
+        gstin, invoice_number, date,
+        taxable_value, gst_amount, total_value
+    All values default to None if not found.
     """
-    matches = re.findall(AMOUNT_PATTERN, line)
-    if not matches:
-        return None
+    lines = raw_text.split('\n')
+    norm_lines = [(_norm(l), l) for l in lines]  # (normalised, original)
 
-    # Walk matches from right to left, return first valid amount ≥ MIN_AMOUNT
-    for val_str in reversed(matches):
-        val = _clean_amount(val_str)
-        if val is not None and val >= MIN_AMOUNT:
-            return val
-    return None
+    result = {
+        'gstin':          None,
+        'invoice_number': None,
+        'date':           None,
+        'taxable_value':  None,
+        'gst_amount':     None,
+        'total_value':    None,
+    }
 
+    cgst_val = None
+    sgst_val = None
+    igst_val = None
 
-# ---------------------------------------------------------------------------
-# Main parser
-# ---------------------------------------------------------------------------
+    # ── Pass 1: GSTIN ─────────────────────────────────────────────────────────
+    for _, orig in norm_lines:
+        m = GSTIN_RE.search(orig.upper())
+        if m:
+            result['gstin'] = m.group(1)
+            break
 
-def parse_fields(text: str) -> dict:
-    """
-    Parse key GST invoice fields from raw OCR text.
-    Returns a dict with keys:
-        gstin, invoice_number, date, taxable_value, gst_amount, total_value
-    """
-    lines = text.split("\n")
+    # ── Pass 2: Invoice number ─────────────────────────────────────────────────
+    for norm, orig in norm_lines:
+        m = INV_NO_RE.search(orig)
+        if m:
+            candidate = m.group(1).strip().rstrip('.,;')
+            if 3 <= len(candidate) <= 30:
+                result['invoice_number'] = candidate
+                break
 
-    gstin = None
-    date = None
-    invoice_number = None
-    subtotal = None
-    gst_amount = None          # will accumulate CGST + SGST or IGST
-    total = None
+    # ── Pass 3: Date ──────────────────────────────────────────────────────────
+    for norm, orig in norm_lines:
+        if 'date' in norm:
+            m = DATE_RE.search(orig)
+            if m:
+                result['date'] = m.group(1)
+                break
+    if not result['date']:
+        for norm, orig in norm_lines:
+            m = DATE_RE.search(orig)
+            if m:
+                result['date'] = m.group(1)
+                break
 
-    for i, line in enumerate(lines):
-        line_upper = line.strip().upper()
-        if not line_upper:
+    # ── Pass 4: Financial amounts (line-by-line) ───────────────────────────────
+    # We iterate every line; keyword and amount must be on the SAME line.
+
+    candidates_total = []   # gather multiple "total" matches; pick the greatest
+
+    for norm, orig in norm_lines:
+        amt = _last_amount(orig)
+        if amt is None:
             continue
 
-        # ── GSTIN ──────────────────────────────────────────────────────────
-        if not gstin:
-            m = re.search(GSTIN_PATTERN, line_upper)
-            if m:
-                gstin = m.group()
+        # Taxable value — first hit wins
+        if result['taxable_value'] is None:
+            for kw in TAXABLE_KWS:
+                if kw in norm:
+                    result['taxable_value'] = amt
+                    break
 
-        # ── Date ──────────────────────────────────────────────────────────
-        if not date:
-            m = re.search(DATE_PATTERN, line_upper)
-            if m:
-                raw_date = m.group()
-                # Normalise YYYY-MM-DD → DD/MM/YYYY
-                if re.match(r"\d{4}[-/]\d{2}[-/]\d{2}", raw_date):
-                    parts = re.split(r"[-/]", raw_date)
-                    date = f"{parts[2]}/{parts[1]}/{parts[0]}"
-                else:
-                    date = raw_date.replace("-", "/")
+        # CGST — update to latest (some invoices list CGST per line-item)
+        for kw in CGST_KWS:
+            if kw in norm and not any(x in norm for x in ['sgst', 'igst']):
+                cgst_val = amt
+                break
 
-        # ── Invoice Number ─────────────────────────────────────────────────
-        if not invoice_number:
-            # Primary: explicit label before the number
-            m = re.search(
-                r"(?:INVOICE|INV|RECEIPT|BILL|VOUCHER)"
-                r"[\s\.:#-]*(?:NO|NUMBER|NO\.)?[\s\.:#-]*"
-                r"([A-Z0-9][A-Z0-9/\-]{2,})",
-                line_upper
-            )
-            if m:
-                candidate = m.group(1).strip("/:- ")
-                # Filter out noise tokens
-                if candidate not in ("NO", "DATE", "OICE", "VOICE", "NUMBER"):
-                    invoice_number = candidate
+        # SGST / UTGST
+        for kw in SGST_KWS:
+            if kw in norm:
+                sgst_val = amt
+                break
 
-            # Fallback: OCR sometimes drops the "INV" prefix — look for a
-            # standalone alphanumeric token that resembles an invoice ID
-            if not invoice_number:
-                m = re.search(r"(?:OICE|INV)[^A-Z0-9]*([A-Z0-9][A-Z0-9/\-]{3,})", line_upper)
-                if m:
-                    candidate = m.group(1).strip("/:- ")
-                    if candidate not in ("OICE", "VOICE", "NO", "DATE"):
-                        invoice_number = candidate
+        # IGST
+        for kw in IGST_KWS:
+            if kw in norm:
+                igst_val = amt
+                break
 
-        # ── Taxable Value / Subtotal ────────────────────────────────────────
-        if re.search(r"\b(SUBTOTAL|TAXABLE\s*VALUE|SUB\s*TOTAL|TAXABLE\s*AMT)\b", line_upper):
-            val = extract_number_from_line(line_upper)
-            if val and (subtotal is None or val > subtotal):
-                subtotal = val
+        # Explicit GST total
+        if result['gst_amount'] is None:
+            for kw in GST_TOTAL_KWS:
+                if kw in norm:
+                    result['gst_amount'] = amt
+                    break
 
-        # ── GST Amount (CGST / SGST / IGST lines) ──────────────────────────
-        # Match explicit GST component labels; avoid GSTIN lines.
-        if re.search(r"\b(CGST|SGST|IGST|UTGST)\b", line_upper):
-            val = extract_number_from_line(line_upper)
-            if val:
-                gst_amount = (gst_amount or 0.0) + val
+        # Total — collect candidates
+        for kw in TOTAL_KWS:
+            if kw in norm:
+                candidates_total.append(amt)
+                break
 
-        elif re.search(r"\bGST\b", line_upper) and "GSTIN" not in line_upper and "EXCLUD" not in line_upper:
-            # Generic "GST" or "Total GST" line (accumulate)
-            val = extract_number_from_line(line_upper)
-            if val:
-                gst_amount = (gst_amount or 0.0) + val
+    # ── Resolve GST amount ────────────────────────────────────────────────────
+    if result['gst_amount'] is None:
+        if cgst_val is not None and sgst_val is not None:
+            result['gst_amount'] = round(cgst_val + sgst_val, 2)
+        elif igst_val is not None:
+            result['gst_amount'] = igst_val
+        elif cgst_val is not None:
+            result['gst_amount'] = round(cgst_val * 2, 2)   # assume equal SGST
 
-        # ── Total ──────────────────────────────────────────────────────────
-        # Match "TOTAL" but exclude sub-totals and taxable value lines
-        if re.search(r"\bGRAND\s*TOTAL\b", line_upper):
-            val = extract_number_from_line(line_upper)
-            if val:
-                total = val  # Grand Total wins outright
-        elif re.search(r"\bTOTAL\b", line_upper) and not re.search(
-            r"\b(SUB\s*TOTAL|TAXABLE|CGST|SGST|IGST|UTGST)\b", line_upper
-        ):
-            val = extract_number_from_line(line_upper)
-            if val and (total is None or val > total):
-                total = val
+    # ── Resolve total ──────────────────────────────────────────────────────────
+    if candidates_total:
+        # Prefer the largest "total" candidate — grand total is >= sub-totals
+        result['total_value'] = max(candidates_total)
 
-    # ── Fallback: derive missing values ────────────────────────────────────
+    # ── Derivations ───────────────────────────────────────────────────────────
+    tv  = result['taxable_value']
+    gst = result['gst_amount']
+    tot = result['total_value']
 
-    # If still no total, take the largest amount in the whole document
-    if total is None:
-        all_amounts = [extract_number_from_line(l.upper()) for l in lines]
-        valid = [a for a in all_amounts if a is not None]
-        if valid:
-            total = max(valid)
+    if tv and gst and not tot:
+        result['total_value'] = round(tv + gst, 2)
 
-    # If subtotal missing but we have total + GST, derive it
-    if total is not None and gst_amount is not None and subtotal is None:
-        derived = round(total - gst_amount, 2)
+    if tot and gst and not tv:
+        derived = round(tot - gst, 2)
         if derived > 0:
-            subtotal = derived
+            result['taxable_value'] = derived
 
-    # If GST is missing but subtotal and total exist, derive it
-    if gst_amount is None and subtotal is not None and total is not None:
-        derived_gst = round(total - subtotal, 2)
-        if derived_gst > 0:
-            gst_amount = derived_gst
+    if tot and tv and not gst:
+        derived = round(tot - tv, 2)
+        if derived >= 0:
+            result['gst_amount'] = derived
 
-    return {
-        "gstin": gstin,
-        "invoice_number": invoice_number,
-        "date": date,
-        "taxable_value": subtotal if subtotal is not None else total,
-        "gst_amount": gst_amount,
-        "total_value": total,
-    }
+    # ── Sanity check ──────────────────────────────────────────────────────────
+    # If total < taxable, something went wrong — reset the bad value
+    if result['total_value'] and result['taxable_value']:
+        if result['total_value'] < result['taxable_value'] * 0.95:
+            # Likely picked up wrong taxable line; trust only total
+            result['taxable_value'] = None
+            result['gst_amount']    = None
+
+    return result
