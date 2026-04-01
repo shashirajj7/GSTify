@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 
 # ---------------------------------------------------------------------------
 # Regex Patterns
@@ -23,7 +24,7 @@ MIN_AMOUNT = 10.0
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _clean_amount(val_str: str) -> float | None:
+def _clean_amount(val_str: str) -> Optional[float]:
     """Strip commas/spaces and convert to float. Returns None on failure."""
     try:
         return float(val_str.replace(",", "").replace(" ", ""))
@@ -31,7 +32,7 @@ def _clean_amount(val_str: str) -> float | None:
         return None
 
 
-def extract_number_from_line(line: str) -> float | None:
+def extract_number_from_line(line: str) -> Optional[float]:
     """
     Find all monetary amounts on a line and return the last (rightmost) one.
     The last number on a line is almost always the actual value column.
