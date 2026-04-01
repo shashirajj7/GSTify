@@ -7,8 +7,13 @@ def preprocess(image_input):
     Preprocess an invoice image for better OCR accuracy.
     Accepts a file path (str) or a numpy image array.
     Returns a processed numpy array (BGR).
+
+    Strategy:
+      - Digital invoices (clean, high DPI): light sharpening + mild binary threshold
+      - Photographed/scanned invoices (noisy): denoising + adaptive threshold
+    The code detects which case we have and applies the right pipeline.
     """
-    # Load image
+    # ── Load ──────────────────────────────────────────────────────────────────
     if isinstance(image_input, str):
         image = cv2.imread(image_input)
         if image is None:
@@ -16,31 +21,39 @@ def preprocess(image_input):
     else:
         image = image_input.copy()
 
-    # 1. Upscale to give Tesseract more pixels to work with
-    #    Only upscale if the image is smaller than 2000px on the longest side
     h, w = image.shape[:2]
-    max_dim = max(h, w)
-    scale = max(2.0, 2000 / max_dim) if max_dim < 2000 else 1.5
-    image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
 
-    # 2. Convert to grayscale
+    # ── 1. Upscale small images ───────────────────────────────────────────────
+    # Tesseract needs at least ~150 DPI; aim for 300 DPI-equivalent
+    max_dim = max(h, w)
+    if max_dim < 2000:
+        scale = 2000 / max_dim
+        image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+
+    # ── 2. Convert to grayscale ───────────────────────────────────────────────
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # 3. Denoise (reduces scanner noise and JPEG artifacts)
-    gray = cv2.fastNlMeansDenoising(gray, h=10, templateWindowSize=7, searchWindowSize=21)
+    # ── 3. Detect noise level ─────────────────────────────────────────────────
+    # Laplacian variance: high = sharp (digital), low = blurry/noisy (photo)
+    lap_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+    is_noisy = lap_var < 500  # threshold chosen empirically for invoice images
 
-    # 4. Adaptive thresholding — handles uneven lighting / shadows on invoices
-    #    More robust than simple Otsu for real-world photos
-    thresh = cv2.adaptiveThreshold(
-        gray, 255,
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY,
-        blockSize=31,
-        C=10
-    )
+    if is_noisy:
+        # Photographed / scanned invoice — denoise lightly + adaptive threshold
+        gray = cv2.fastNlMeansDenoising(gray, h=7, templateWindowSize=7, searchWindowSize=15)
+        processed = cv2.adaptiveThreshold(
+            gray, 255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            blockSize=31,
+            C=10,
+        )
+    else:
+        # Clean digital invoice — simple Otsu threshold (preserves fine text)
+        # Optional: lightly sharpen before thresholding
+        kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+        gray = cv2.filter2D(gray, -1, kernel)
+        _, processed = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-    # 5. Convert back to 3-channel BGR (Tesseract can handle grayscale/binary
-    #    but returning BGR keeps the pipeline consistent)
-    final_img = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
-
-    return final_img
+    # ── 4. Return as 3-channel BGR (keeps pipeline consistent) ───────────────
+    return cv2.cvtColor(processed, cv2.COLOR_GRAY2BGR)

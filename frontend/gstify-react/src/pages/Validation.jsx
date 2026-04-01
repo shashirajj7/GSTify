@@ -8,60 +8,65 @@ const Validation = () => {
     const navigate = useNavigate();
 
     const handleApprove = async () => {
-        const existing = getUserInvoices();
-        const uploadDate = new Date().toLocaleDateString('en-GB'); // Date of upload
+        try {
+            const existing = getUserInvoices();
+            const uploadDate = new Date().toLocaleDateString('en-GB');
 
-        if (aiData.is_multiple && aiData.invoices) {
-            // Save as a single combined entry per user request but keep individual data
-            const newBatchInvoice = {
-                invoiceNumber: customBatchName || documentName,
-                date: uploadDate,
-                customerGSTIN: 'Multiple GSTINs',
-                taxableValue: aiData.summary?.taxable_value || 0,
-                taxAmount: (aiData.summary?.cgst || 0) + (aiData.summary?.sgst || 0) + (aiData.summary?.igst || 0),
-                status: 'Validated',
-                isBatch: true,
-                fileCount: aiData.file_count || 0,
-                invoices: aiData.invoices.map(inv => ({
-                    invoiceNumber: inv.invoice_number || inv.filename || 'Unknown',
-                    date: uploadDate, // Always use the upload date
-                    customerGSTIN: inv.gstin || 'Unknown',
-                    taxableValue: inv.taxable_value || 0,
-                    taxAmount: (inv.cgst || 0) + (inv.sgst || 0) + (inv.igst || 0),
+            if (aiData.is_multiple && aiData.invoices) {
+                const newBatchInvoice = {
+                    invoiceNumber: customBatchName || documentName,
+                    date: uploadDate,
+                    customerGSTIN: 'Multiple GSTINs',
+                    taxableValue: aiData.summary?.taxable_value || 0,
+                    taxAmount: (aiData.summary?.cgst || 0) + (aiData.summary?.sgst || 0) + (aiData.summary?.igst || 0),
                     status: 'Validated',
-                    filename: inv.filename
-                }))
-            };
-            existing.push(newBatchInvoice);
+                    isBatch: true,
+                    fileCount: aiData.file_count || 0,
+                    invoices: aiData.invoices.map(inv => ({
+                        invoiceNumber: inv.invoice_number || inv.filename || 'Unknown',
+                        date: uploadDate,
+                        customerGSTIN: inv.gstin || 'Unknown',
+                        taxableValue: inv.taxable_value || 0,
+                        taxAmount: (inv.cgst || 0) + (inv.sgst || 0) + (inv.igst || 0),
+                        status: 'Validated',
+                        filename: inv.filename
+                    }))
+                };
+                existing.push(newBatchInvoice);
 
-            // Generate the final CSVs, injecting upload date for each invoice
-            try {
-                const baseUrl = getBaseUrl();
-                await fetch(`${baseUrl}/api/generate-csv`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        invoices: aiData.invoices.map(inv => ({ ...inv, date: uploadDate })),
-                        batch_name: customBatchName || documentName
-                    })
-                });
-            } catch (err) {
-                console.error("Failed to generate CSV for batch", err);
+                try {
+                    const baseUrl = getBaseUrl();
+                    await fetch(`${baseUrl}/api/generate-csv`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            invoices: aiData.invoices.map(inv => ({ ...inv, date: uploadDate })),
+                            batch_name: customBatchName || documentName
+                        })
+                    });
+                } catch (err) {
+                    console.error("Failed to generate CSV for batch", err);
+                }
+
+            } else {
+                const newInvoice = {
+                    invoiceNumber: aiData.data?.invoice_number || documentName,
+                    date: uploadDate,
+                    customerGSTIN: aiData.data?.gstin || 'Unknown',
+                    taxableValue: aiData.data?.taxable_value || 0,
+                    taxAmount: (aiData.data?.cgst || 0) + (aiData.data?.sgst || 0) + (aiData.data?.igst || 0),
+                    status: 'Validated'
+                };
+                existing.push(newInvoice);
             }
 
-        } else {
-            const newInvoice = {
-                invoiceNumber: aiData.data?.invoice_number || documentName,
-                date: uploadDate, // Always use the upload date
-                customerGSTIN: aiData.data?.gstin || 'Unknown',
-                taxableValue: aiData.data?.taxable_value || 0,
-                taxAmount: (aiData.data?.cgst || 0) + (aiData.data?.sgst || 0) + (aiData.data?.igst || 0),
-                status: 'Validated'
-            };
-            existing.push(newInvoice);
+            saveUserInvoices(existing);
+        } catch (err) {
+            console.error("handleApprove error (non-fatal):", err);
+        } finally {
+            // Always navigate to fraud-detection regardless of any errors above
+            navigate('/fraud-detection');
         }
-        saveUserInvoices(existing);
-        navigate('/fraud-detection');
     };
 
 

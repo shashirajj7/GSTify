@@ -81,7 +81,11 @@ const Upload = () => {
             }
         }
 
-        // Read files and store images natively for preview
+        // Always save the critical metadata FIRST, before potentially-large image data
+        localStorage.setItem('uploadedInvoiceName', files.length > 1 ? `${files.length} Invoices Batch` : files[0].name);
+        localStorage.setItem('invoiceUploadDate', new Date().toLocaleDateString('en-GB'));
+
+        // Then try to store image previews (may fail if image > localStorage limit)
         if (files && files.length > 0) {
             const readFiles = Array.from(files).map((file) => {
                 return new Promise((resolve) => {
@@ -92,13 +96,17 @@ const Upload = () => {
             });
 
             Promise.all(readFiles).then((results) => {
-                if (results.length > 0) {
-                    localStorage.setItem('uploadedInvoiceImage', results[0]);
-                    localStorage.setItem('uploadedInvoiceImages', JSON.stringify(results));
+                try {
+                    if (results.length > 0) {
+                        localStorage.setItem('uploadedInvoiceImage', results[0]);
+                        localStorage.setItem('uploadedInvoiceImages', JSON.stringify(results));
+                    }
+                } catch (quotaErr) {
+                    // Gracefully degrade: image preview won't show but flow continues
+                    console.warn("Could not store invoice image preview (storage full):", quotaErr);
+                    localStorage.removeItem('uploadedInvoiceImage');
+                    localStorage.removeItem('uploadedInvoiceImages');
                 }
-                localStorage.setItem('uploadedInvoiceName', files.length > 1 ? `${files.length} Invoices Batch` : files[0].name);
-                // Always stamp the exact date the user uploaded this invoice
-                localStorage.setItem('invoiceUploadDate', new Date().toLocaleDateString('en-GB'));
             });
         }
 

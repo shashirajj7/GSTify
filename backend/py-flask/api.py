@@ -255,7 +255,9 @@ def _process_one(file_storage, cv2, np, preprocess, extract_text, parse_fields, 
             total_conf += c
 
         if not full_text.strip():
-            raise ValueError("OCR extracted no text. Check Tesseract installation.")
+            print("[OCR] Warning: no text extracted. Returning empty fields.")
+            # Don't crash — let the Validation page show with empty fields
+            # so the user can still see the invoice image and enter data manually
 
         fields = parse_fields(full_text)
         cgst, sgst, igst = calculate_tax_split(
