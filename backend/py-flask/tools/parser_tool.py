@@ -79,6 +79,9 @@ def _amounts_in_line(line: str):
             # Fix OCR errors where decimal point is read as space "4 90" -> "4.90"
             if " " in s:
                 s = s.replace(" ", ".")
+            # Fix OCR errors where comma is read as decimal point (193,00)
+            if "," in s and len(s) - 1 - s.rfind(",") == 2:
+                s = s.rsplit(",", 1)[0].replace(",", "") + "." + s.split(",")[-1]
             val = float(s.replace(',', ''))
             results.append(val)
         except ValueError:
@@ -218,6 +221,13 @@ def parse_fields(raw_text: str) -> dict:
     tv  = result['taxable_value']
     gst = result['gst_amount']
     tot = result['total_value']
+
+    if tot and tv and tot > tv * 2:
+        if abs((tot / 100) - tv) <= tv * 0.5:
+            tot = tot / 100
+            result['total_value'] = tot
+        else:
+            tot, result['total_value'] = None, None
 
     if tv and gst and not tot:
         result['total_value'] = round(tv + gst, 2)
