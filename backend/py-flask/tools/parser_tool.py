@@ -242,6 +242,12 @@ def parse_fields(raw_text: str) -> dict:
         if derived >= 0:
             result['gst_amount'] = derived
 
+    if tot and not tv and not gst:
+        # User requested derivation: treat total as inclusive of 18% GST (9% CGST / 9% SGST)
+        tv = round(tot / 1.18, 2)
+        result['taxable_value'] = tv
+        result['gst_amount'] = round(tot - tv, 2)
+
     # ── Sanity check ──────────────────────────────────────────────────────────
     # If total < taxable, something went wrong — reset the bad value
     if result['total_value'] and result['taxable_value']:
