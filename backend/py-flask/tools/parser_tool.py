@@ -20,9 +20,11 @@ GSTIN_RE = re.compile(
 
 # Currency amount — handles Indian 1,23,456.78 and Western 1,234,567.89
 # Must end with 1-2 decimal digits OR not have a following digit
+# OCR often reads decimal points as spaces (e.g. '4.90' -> '4 90' or '4. 90')
 AMOUNT_RE = re.compile(
-    r'(?<![,\d])(\d{1,3}(?:,\d{2,3})*(?:\.\d{1,2})?|\d+\.\d{1,2})(?!\d)'
+    r'(?<![,\d])(\d{1,3}(?:,\d{2,3})*(?:[.\s]\d{1,2})?|\d+[.\s]\d{1,2})(?!\d)'
 )
+
 
 # Invoice number labels
 INV_NO_RE = re.compile(
@@ -74,6 +76,9 @@ def _amounts_in_line(line: str):
     results = []
     for s in raw:
         try:
+            # Fix OCR errors where decimal point is read as space "4 90" -> "4.90"
+            if " " in s:
+                s = s.replace(" ", ".")
             val = float(s.replace(',', ''))
             results.append(val)
         except ValueError:
