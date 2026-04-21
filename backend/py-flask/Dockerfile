@@ -26,4 +26,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 10000
 
 # Run app with gunicorn (4 workers, 120s timeout for large images)
-CMD ["gunicorn", "api:app", "--bind", "0.0.0.0:10000", "--workers", "2", "--timeout", "120"]
+CMD gunicorn api:app --bind 0.0.0.0:${PORT:-10000} --workers 2 --timeout 120
