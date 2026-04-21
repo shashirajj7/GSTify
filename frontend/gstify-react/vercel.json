@@ -10,7 +10,7 @@
   ],
   "build": {
     "env": {
-      "VITE_API_URL": "https://gstify-backend.onrender.com"
+      "VITE_API_URL": "https://gstify.onrender.com"
     }
   }
 }
