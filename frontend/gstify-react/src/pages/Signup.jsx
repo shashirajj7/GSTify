@@ -65,7 +65,8 @@ const Signup = () => {
         } catch (err) {
             setLoading(false);
             if (err.code !== 'auth/popup-closed-by-user') {
-                setError('Google sign-up failed. Please try again.');
+                console.error("Google Auth Error:", err);
+                setError(`Google sign-up failed: ${err.message.replace('Firebase:', '').trim()}`);
             }
         }
     };
