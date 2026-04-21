@@ -23,8 +23,7 @@ export const pingBackend = async () => {
     try {
         const res = await fetch(`${getBaseUrl()}/api/health`, {
             method: "GET",
-            // Short timeout so the caller can decide how to handle a sleeping server
-            signal: AbortSignal.timeout(8000),
+            signal: AbortSignal.timeout(60000), // Wait up to 60s for Render cold start
         });
         return res.ok;
     } catch {

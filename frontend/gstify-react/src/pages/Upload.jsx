@@ -64,17 +64,17 @@ const Upload = () => {
         // --- Wake-up ping: Render free tier sleeps after inactivity ---
         const isAwake = await pingBackend();
         if (!isAwake) {
-            showToast("Server is waking up... please wait a moment.");
-            // Wait up to 60s for Render to spin up, pinging every 5s
+            showToast("Server is spinning up... please wait (takes ~1 min).");
+            // Give Render one long request to properly finish starting up
             let awake = false;
-            for (let i = 0; i < 12; i++) {
-                await new Promise(r => setTimeout(r, 5000));
-                setUploadProgress(prev => Math.min(prev + 3, 50));
+            for (let i = 0; i < 4; i++) {
+                await new Promise(r => setTimeout(r, 10000));
+                setUploadProgress(prev => Math.min(prev + 10, 50));
                 awake = await pingBackend();
                 if (awake) break;
             }
             if (!awake) {
-                showToast("The server is offline or taking too long. Please try again in a minute.");
+                showToast("The server timed out starting up. Please try again in 30 seconds.");
                 setIsUploading(false);
                 setUploadProgress(0);
                 return;
