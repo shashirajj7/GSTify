@@ -12,7 +12,11 @@
  *   2. http://127.0.0.1:5000 for local development
  */
 export const getBaseUrl = () => {
-    return import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+    // Local dev defaults to localhost, production defaults to live Render URL
+    if (import.meta.env.DEV) {
+        return import.meta.env.VITE_API_URL || "http://127.0.0.1:5000";
+    }
+    return import.meta.env.VITE_API_URL || "https://gstify.onrender.com";
 };
 
 /**

@@ -122,7 +122,20 @@ const Upload = () => {
             // Send actual request to API using doUpload helper
             const response = await doUpload(files, baseUrl);
 
-            const data = await response.json();
+            let data;
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                data = await response.json();
+            } else {
+                const textError = await response.text();
+                data = { 
+                    success: false, 
+                    error: response.status === 413 ? "File is too large (Max 32MB)" : 
+                           response.status >= 500 ? "Server encountered a processing error (it might have run out of memory on a large document)." : 
+                           "Unexpected server response: " + response.statusText
+                };
+                console.error("Non-JSON response from server:", textError);
+            }
 
             clearInterval(progressInterval);
             setUploadProgress(100);
