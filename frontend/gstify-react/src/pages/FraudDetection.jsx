@@ -54,7 +54,7 @@ const FraudDetection = () => {
 
 
     const downloadCSVData = (invoicesToDownload, filename) => {
-        const headers = ['Invoice Number', 'Date', 'Customer GSTIN', 'Taxable Value', 'Tax Amount', 'Status'];
+        const headers = ['Invoice Number', 'Date', 'Customer GSTIN', 'Taxable Value', 'CGST', 'SGST/IGST', 'Status'];
         const data = invoicesToDownload.flatMap(inv => {
             if (inv.isBatch && inv.invoices) {
                 return inv.invoices.map(subInv => [
@@ -62,7 +62,8 @@ const FraudDetection = () => {
                     subInv.date,
                     subInv.customerGSTIN,
                     subInv.taxableValue,
-                    subInv.taxAmount,
+                    (parseFloat(subInv.taxableValue || 0) * 0.09).toFixed(2),
+                    (parseFloat(subInv.taxableValue || 0) * 0.09).toFixed(2),
                     subInv.status
                 ]);
             }
@@ -71,7 +72,8 @@ const FraudDetection = () => {
                 inv.date,
                 inv.customerGSTIN,
                 inv.taxableValue,
-                inv.taxAmount,
+                (parseFloat(inv.taxableValue || 0) * 0.09).toFixed(2),
+                (parseFloat(inv.taxableValue || 0) * 0.09).toFixed(2),
                 inv.status
             ]];
         });
@@ -97,7 +99,8 @@ const FraudDetection = () => {
     };
 
     const totalTaxableValue = invoices.reduce((sum, inv) => sum + (parseFloat(inv.taxableValue) || 0), 0);
-    const totalTaxAmount = invoices.reduce((sum, inv) => sum + (parseFloat(inv.taxAmount) || 0), 0);
+    const totalCGST = invoices.reduce((sum, inv) => sum + ((parseFloat(inv.taxableValue) || 0) * 0.09), 0);
+    const totalSGST = invoices.reduce((sum, inv) => sum + ((parseFloat(inv.taxableValue) || 0) * 0.09), 0);
 
 
     return (
@@ -231,7 +234,8 @@ const FraudDetection = () => {
                                         <th className="p-4">Date</th>
                                         <th className="p-4">Customer GSTIN</th>
                                         <th className="p-4 text-right">Taxable Value</th>
-                                        <th className="p-4 text-right">Tax (IGST/CGST)</th>
+                                        <th className="p-4 text-right">CGST (9%)</th>
+                                        <th className="p-4 text-right">SGST/IGST (9%)</th>
                                         <th className="p-4 text-center">Status</th>
                                         <th className="p-4 text-center">Action</th>
                                     </tr>
@@ -254,7 +258,8 @@ const FraudDetection = () => {
                                                         <td className="p-4"><input type="text" className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-sm text-slate-900 dark:text-white" value={editData.date} onChange={(e) => setEditData({ ...editData, date: e.target.value })} /></td>
                                                         <td className="p-4"><input type="text" className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-sm text-slate-900 dark:text-white font-mono" value={editData.customerGSTIN} onChange={(e) => setEditData({ ...editData, customerGSTIN: e.target.value })} /></td>
                                                         <td className="p-4"><input type="number" className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-sm text-slate-900 dark:text-white text-right" value={editData.taxableValue} onChange={(e) => setEditData({ ...editData, taxableValue: parseFloat(e.target.value) || 0 })} /></td>
-                                                        <td className="p-4"><input type="number" className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-sm text-slate-900 dark:text-white text-right" value={editData.taxAmount} onChange={(e) => setEditData({ ...editData, taxAmount: parseFloat(e.target.value) || 0 })} /></td>
+                                                        <td className="p-4"><input type="number" readOnly className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm text-slate-500 dark:text-slate-400 text-right cursor-not-allowed" value={((editData.taxableValue || 0) * 0.09).toFixed(2)} /></td>
+                                                        <td className="p-4"><input type="number" readOnly className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm text-slate-500 dark:text-slate-400 text-right cursor-not-allowed" value={((editData.taxableValue || 0) * 0.09).toFixed(2)} /></td>
                                                         <td className="p-4 text-center">
                                                             <select className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-[10px] font-bold uppercase text-slate-900 dark:text-white" value={editData.status} onChange={(e) => setEditData({ ...editData, status: e.target.value })}>
                                                                 <option value="Validated">Validated</option>
@@ -274,7 +279,8 @@ const FraudDetection = () => {
                                                         <td className="p-4 text-slate-600 dark:text-slate-200">{inv.date}</td>
                                                         <td className="p-4 font-mono text-slate-600 dark:text-slate-200">{inv.customerGSTIN}</td>
                                                         <td className="p-4 text-right font-medium text-slate-900 dark:text-white">₹ {(inv.taxableValue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                                                        <td className="p-4 text-right font-medium text-slate-500 dark:text-slate-200">₹ {(inv.taxAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                                        <td className="p-4 text-right font-medium text-slate-500 dark:text-slate-200">₹ {((inv.taxableValue || 0) * 0.09).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                        <td className="p-4 text-right font-medium text-slate-500 dark:text-slate-200">₹ {((inv.taxableValue || 0) * 0.09).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                                         <td className="p-4 text-center">
                                                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${inv.status === 'Flagged' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'}`}>
                                                                 {inv.status}
@@ -295,8 +301,9 @@ const FraudDetection = () => {
                                     {invoices.length > 0 && editingIdx === null && (
                                         <tr className="bg-slate-100 dark:bg-slate-800/80 font-bold border-t-2 border-slate-300 dark:border-slate-600">
                                             <td colSpan="4" className="p-4 text-right text-slate-900 dark:text-white uppercase tracking-wider">Total:</td>
-                                            <td className="p-4 text-right text-slate-900 dark:text-white text-base">₹ {totalTaxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                                            <td className="p-4 text-right text-slate-900 dark:text-white text-base">₹ {totalTaxAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                            <td className="p-4 text-right text-slate-900 dark:text-white text-base">₹ {totalTaxableValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                            <td className="p-4 text-right text-slate-900 dark:text-white text-base">₹ {totalCGST.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                            <td className="p-4 text-right text-slate-900 dark:text-white text-base">₹ {totalSGST.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                             <td colSpan="2" className="p-4"></td>
                                         </tr>
                                     )}
